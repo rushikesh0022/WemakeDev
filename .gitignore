@@ -1,0 +1,15 @@
+node_modules/
+.next/
+.next*/
+.turbo/
+.DS_Store
+.env
+.env.*
+!.env.example
+__pycache__/
+*.pyc
+*.tsbuildinfo
+.venv/
+.pytest_cache/
+coverage/
+data/local-basket.db

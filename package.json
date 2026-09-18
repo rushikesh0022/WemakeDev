@@ -1,0 +1,12 @@
+{
+  "name": "zaply",
+  "version": "1.0.0",
+  "private": true,
+  "packageManager": "pnpm@9.15.4",
+  "scripts": {
+    "dev": "pnpm --filter @zaply/web dev",
+    "build": "pnpm --filter @zaply/web build",
+    "lint": "pnpm --filter @zaply/web lint",
+    "test": "pnpm --filter @zaply/web test"
+  }
+}

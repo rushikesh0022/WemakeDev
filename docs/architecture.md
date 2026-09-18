@@ -1,0 +1,46 @@
+# Zaply architecture
+
+## Request flow
+
+```mermaid
+flowchart LR
+  UI[One search surface] --> C[Hybrid catalog retrieval]
+  C --> A[Autocomplete and normal results]
+  A -->|Ask Zaply AI| L[Dynamic intent planner]
+  L --> N[Open-ended needs]
+  N --> H[Hybrid lexical and semantic retrieval]
+  H --> F[Stock and constraint filters]
+  F --> S[Semantic + public + personal ranker]
+  S --> B[Budget-aware basket builder]
+  B --> E[Editable explanation UI]
+  E --> K[Cart]
+  E --> V[Behavior events]
+  V --> S
+```
+
+The top search is the only query input. As the customer types, a low-latency hybrid ranker returns products using weighted name, prefix, brand, category and description matches, then blends popularity, availability and recent-cart affinity. Submitting the query opens normal catalog results. The AI action beneath autocomplete, and again beneath results, sends the same text to the planner only when a complete basket or recipe is wanted.
+
+The query-understanding response has no intent, mission, occasion, recipe, or importance enum. Each requirement has free-form retrieval queries plus continuous `priority` and `confidence` scores. The catalog vocabulary is generated from current inventory, so adding a new department does not require a new code branch or taxonomy value. Retrieval still limits output to real in-stock products.
+
+## Local MVP
+
+- Next.js PWA for desktop and mobile web.
+- Server-only `/api/recommend` route for model access and catalog grounding.
+- Local TypeScript catalog with fictional inventory and prices plus all 81 GroceryStoreDataset classes.
+- Browser-local cart and recent-item affinity.
+- OpenAI Responses API with strict JSON schema, or Ollama with the same schema.
+- Normal product queries never call the model; the user explicitly promotes the same query to AI planning.
+
+## AWS target mapping
+
+| Local boundary | AWS production service |
+| --- | --- |
+| Next.js server route | API Gateway + Lambda or ECS/Fargate recommendation service |
+| Catalog array | Aurora PostgreSQL + pgvector, fed by retailer inventory streams |
+| Browser history | DynamoDB customer events and profile features |
+| Lexical retrieval | OpenSearch vector and keyword hybrid retrieval |
+| Environment model adapter | Bedrock model invocation |
+| In-memory/public scores | Kinesis events → S3/Glue → batch and streaming feature jobs |
+| Local metrics page | CloudWatch metrics plus experiment dashboards |
+
+At scale, intent plans and query embeddings are cached by normalized request and region. Retrieval happens per fulfillment store so price and stock are authoritative. A learning-to-rank model replaces hand-tuned weights after impression, click, add, removal, purchase, repeat purchase, return, and substitution data is large enough for unbiased training.
