@@ -1,18 +1,19 @@
 "use client";
 
-import { ChevronRight, CircleHelp, CreditCard, LogOut, MapPin, Package, Settings, ShieldCheck, UserRound } from "lucide-react";
+import { ArrowLeft, ChevronRight, CircleHelp, CreditCard, LogOut, MapPin, Package, Pencil, Settings, ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import type { PublicUser } from "@/lib/auth";
 
-type View = "profile" | "addresses" | "orders" | "payments" | "preferences" | "help";
+type View = "home" | "profile" | "addresses" | "orders" | "payments" | "preferences" | "help";
 
 export function AccountExperience({ initialUser }: { initialUser: PublicUser }) {
   const router = useRouter();
   const [user, setUser] = useState(initialUser);
-  const [view, setView] = useState<View>("profile");
+  const [view, setView] = useState<View>("home");
   const [message, setMessage] = useState("");
   const initials = user.name.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase();
+  const addressSummary = user.address ? `${user.address.label} · ${user.address.city}` : "Add a delivery address";
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -35,36 +36,54 @@ export function AccountExperience({ initialUser }: { initialUser: PublicUser }) 
     router.refresh();
   }
 
-  const navigation: Array<{ id: View; label: string; icon: typeof UserRound }> = [
-    { id: "profile", label: "Profile", icon: UserRound },
-    { id: "addresses", label: "Addresses", icon: MapPin },
-    { id: "orders", label: "Your orders", icon: Package },
-    { id: "payments", label: "Payments", icon: CreditCard },
-    { id: "preferences", label: "Preferences", icon: Settings },
-    { id: "help", label: "Help & support", icon: CircleHelp }
-  ];
+  function open(next: View) {
+    setView(next);
+    setMessage("");
+  }
 
   return (
     <div className="account-page">
-      <header className="account-heading"><div className="account-avatar">{initials}</div><div><span>MY ACCOUNT</span><h1>{user.name}</h1><p>{user.email}</p></div></header>
-      <div className="account-layout">
-        <aside className="account-menu">
-          {navigation.map(({ id, label, icon: Icon }) => <button key={id} className={view === id ? "active" : ""} onClick={() => { setView(id); setMessage(""); }}><Icon /><span>{label}</span><ChevronRight /></button>)}
-          {user.role === "admin" && <button onClick={() => router.push("/admin")}><ShieldCheck /><span>Admin control room</span><ChevronRight /></button>}
-          <button className="account-logout" onClick={logout}><LogOut /><span>Sign out</span></button>
-        </aside>
-        <section className="account-content">
-          {view === "profile" && <><header><span>PERSONAL DETAILS</span><h2>Your profile</h2><p>Keep your contact information accurate for delivery updates.</p></header><form onSubmit={save} className="account-form"><label>Customer ID<input value={user.id} disabled /></label><label>Full name<input name="name" defaultValue={user.name} minLength={2} required /></label><label>Email address<input value={user.email} disabled /></label><label>Phone number<input name="phone" defaultValue={user.phone} placeholder="Add a phone number" /></label><label>Member since<input value={new Date(user.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })} disabled /></label><button>Save profile</button></form></>}
-          {view === "addresses" && <><header><span>DELIVERY</span><h2>Saved address</h2><p>This address can be used during checkout.</p></header><form onSubmit={save} className="account-form"><label>Label<input name="label" defaultValue={user.address?.label ?? "Home"} required /></label><label className="wide">Address<input name="line1" defaultValue={user.address?.line1 ?? ""} placeholder="Flat, building and street" required /></label><label>City<input name="city" defaultValue={user.address?.city ?? ""} required /></label><label>PIN code<input name="pincode" defaultValue={user.address?.pincode ?? ""} inputMode="numeric" required /></label><button>Save address</button></form></>}
-          {view === "orders" && (user.orders.length ? <><header><span>ORDER HISTORY</span><h2>Your orders</h2><p>Orders placed with this local account appear here.</p></header><div className="account-orders">{user.orders.map((order) => <article key={order.id}><div><strong>{order.id}</strong><small>{new Date(order.createdAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</small></div><span>{order.itemCount} {order.itemCount === 1 ? "item" : "items"}</span><b>₹{order.total}</b><em>{order.status}</em></article>)}</div></> : <EmptyPanel icon={Package} title="No orders yet" copy="Completed Zaply orders will appear here with delivery and invoice details." />)}
-          {view === "payments" && <EmptyPanel icon={CreditCard} title="No payment methods saved" copy="Payment details will be managed by the payment provider when checkout is connected." />}
-          {view === "preferences" && <><header><span>PERSONALISATION</span><h2>Shopping preferences</h2><p>These controls will influence future recommendations.</p></header><div className="preference-list"><label><span><strong>Use order history</strong><small>Personalise results using products you purchase.</small></span><input type="checkbox" defaultChecked /></label><label><span><strong>Offers and price alerts</strong><small>Receive updates about relevant deals.</small></span><input type="checkbox" /></label><label><span><strong>Substitution approval</strong><small>Ask before replacing unavailable products.</small></span><input type="checkbox" defaultChecked /></label></div></>}
-          {view === "help" && <EmptyPanel icon={CircleHelp} title="How can we help?" copy="For this MVP, support is available through the project repository. Live chat and ticket history can be connected later." />}
-          {message && <p className={message.startsWith("Saved") ? "form-success" : "form-error"} role="status">{message}</p>}
+      {view === "home" ? <>
+        <section className="account-profile-card">
+          <div className="account-avatar">{initials}</div>
+          <div className="account-profile-copy">
+            <span>MY ZAPLY ACCOUNT</span>
+            <h1>{user.name}</h1>
+            <p>{user.phone || user.email}</p>
+            {user.phone && <small>{user.email}</small>}
+          </div>
+          <button className="account-edit" onClick={() => open("profile")}><Pencil /><span>Edit profile</span></button>
+          <p className="account-profile-note">Good food, thoughtful choices, delivered your way.</p>
         </section>
-      </div>
+
+        <section className="account-shortcuts" aria-label="Account options">
+          <AccountShortcut icon={Package} title="Your orders" status={user.orders.length ? `${user.orders.length} recent ${user.orders.length === 1 ? "order" : "orders"}` : "Track and reorder"} onClick={() => open("orders")} />
+          <AccountShortcut icon={MapPin} title="Saved addresses" status={addressSummary} onClick={() => open("addresses")} />
+          <AccountShortcut icon={CreditCard} title="Payments" status="Added securely at checkout" onClick={() => open("payments")} />
+          <AccountShortcut icon={Settings} title="Preferences" status="Personalisation and substitutions" onClick={() => open("preferences")} />
+          <AccountShortcut icon={CircleHelp} title="Help & support" status="Get help with your orders" onClick={() => open("help")} wide />
+          {user.role === "admin" && <AccountShortcut icon={ShieldCheck} title="Admin control room" status="Catalog and recommendation tools" onClick={() => router.push("/admin")} wide />}
+        </section>
+
+        <button className="account-signout" onClick={logout}><span><LogOut />Sign out</span><ChevronRight /></button>
+      </> : <section className="account-detail-shell">
+        <button className="account-back" onClick={() => open("home")}><ArrowLeft />Back to account</button>
+        <div className="account-content">
+          {view === "profile" && <><header><span>PERSONAL DETAILS</span><h2>Edit your profile</h2><p>Keep your contact information accurate for delivery updates.</p></header><form onSubmit={save} className="account-form"><label>Full name<input name="name" defaultValue={user.name} minLength={2} required /></label><label>Email address<input value={user.email} disabled /></label><label>Phone number<input name="phone" defaultValue={user.phone} placeholder="Add a phone number" /></label><label>Member since<input value={new Date(user.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })} disabled /></label><button>Save profile</button></form></>}
+          {view === "addresses" && <><header><span>DELIVERY</span><h2>Saved address</h2><p>Zaply uses this address during checkout and location selection.</p></header><form onSubmit={save} className="account-form"><label>Label<input name="label" defaultValue={user.address?.label ?? "Home"} required /></label><label className="wide">Address<input name="line1" defaultValue={user.address?.line1 ?? ""} placeholder="Flat, building and street" required /></label><label>City<input name="city" defaultValue={user.address?.city ?? ""} required /></label><label>PIN code<input name="pincode" defaultValue={user.address?.pincode ?? ""} inputMode="numeric" required /></label><button>Save address</button></form></>}
+          {view === "orders" && (user.orders.length ? <><header><span>ORDER HISTORY</span><h2>Your orders</h2><p>Review recent baskets and order details.</p></header><div className="account-orders">{user.orders.map((order) => <article key={order.id}><div><strong>{order.id}</strong><small>{new Date(order.createdAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</small></div><span>{order.itemCount} {order.itemCount === 1 ? "item" : "items"}</span><b>₹{order.total}</b><em>{order.status}</em></article>)}</div></> : <EmptyPanel icon={Package} title="No orders yet" copy="Your completed Zaply orders will appear here, ready to review or reorder." />)}
+          {view === "payments" && <EmptyPanel icon={CreditCard} title="No payment methods saved" copy="For your security, payment details will be handled by the payment provider during checkout." />}
+          {view === "preferences" && <><header><span>PERSONALISATION</span><h2>Shopping preferences</h2><p>Choose how Zaply personalises recommendations and substitutions.</p></header><div className="preference-list"><label><span><strong>Use order history</strong><small>Personalise results using products you purchase.</small></span><input type="checkbox" defaultChecked /></label><label><span><strong>Offers and price alerts</strong><small>Receive updates about relevant deals.</small></span><input type="checkbox" /></label><label><span><strong>Substitution approval</strong><small>Ask before replacing unavailable products.</small></span><input type="checkbox" defaultChecked /></label></div></>}
+          {view === "help" && <EmptyPanel icon={CircleHelp} title="How can we help?" copy="Order support, common questions, and live assistance will be available here when the support service is connected." />}
+          {message && <p className={message.startsWith("Saved") ? "form-success" : "form-error"} role="status">{message}</p>}
+        </div>
+      </section>}
     </div>
   );
+}
+
+function AccountShortcut({ icon: Icon, title, status, onClick, wide = false }: { icon: typeof Package; title: string; status: string; onClick: () => void; wide?: boolean }) {
+  return <button className={`account-shortcut${wide ? " account-shortcut--wide" : ""}`} onClick={onClick}><span className="account-shortcut__icon"><Icon /></span><span className="account-shortcut__copy"><strong>{title}</strong><small>{status}</small></span><ChevronRight /></button>;
 }
 
 function EmptyPanel({ icon: Icon, title, copy }: { icon: typeof Package; title: string; copy: string }) {
