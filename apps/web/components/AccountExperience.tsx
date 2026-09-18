@@ -7,11 +7,14 @@ import type { PublicUser } from "@/lib/auth";
 
 type View = "home" | "profile" | "addresses" | "orders" | "payments" | "preferences" | "help";
 
-export function AccountExperience({ initialUser }: { initialUser: PublicUser }) {
+export function AccountExperience({ initialUser, initialView = "home" }: { initialUser: PublicUser; initialView?: "home" | "orders" }) {
   const router = useRouter();
   const [user, setUser] = useState(initialUser);
-  const [view, setView] = useState<View>("home");
+  const [view, setView] = useState<View>(initialView);
   const [message, setMessage] = useState("");
+  const [splitOrderId, setSplitOrderId] = useState("");
+  const [ownerVpa, setOwnerVpa] = useState("");
+  const [splitBusy, setSplitBusy] = useState(false);
   const initials = user.name.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase();
   const addressSummary = user.address ? `${user.address.label} · ${user.address.city}` : "Add a delivery address";
 
@@ -39,6 +42,16 @@ export function AccountExperience({ initialUser }: { initialUser: PublicUser }) 
   function open(next: View) {
     setView(next);
     setMessage("");
+  }
+
+  async function createSplit(event: FormEvent<HTMLFormElement>, orderId: string) {
+    event.preventDefault(); setSplitBusy(true); setMessage("");
+    const response = await fetch(`/api/orders/${orderId}/splits`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ownerVpa }) });
+    const data = await response.json(); setSplitBusy(false);
+    if (response.status === 409 && data.splitId) return router.push(`/split/manage/${data.splitId}`);
+    if (!response.ok) return setMessage(data.error ?? "Could not create the split.");
+    window.sessionStorage.setItem(`zaply-share-${data.split.id}`, data.publicToken);
+    router.push(`/split/manage/${data.split.id}`);
   }
 
   return (
@@ -71,7 +84,7 @@ export function AccountExperience({ initialUser }: { initialUser: PublicUser }) 
         <div className="account-content">
           {view === "profile" && <><header><span>PERSONAL DETAILS</span><h2>Edit your profile</h2><p>Keep your contact information accurate for delivery updates.</p></header><form onSubmit={save} className="account-form"><label>Full name<input name="name" defaultValue={user.name} minLength={2} required /></label><label>Email address<input value={user.email} disabled /></label><label>Phone number<input name="phone" defaultValue={user.phone} placeholder="Add a phone number" /></label><label>Member since<input value={new Date(user.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })} disabled /></label><button>Save profile</button></form></>}
           {view === "addresses" && <><header><span>DELIVERY</span><h2>Saved address</h2><p>Zaply uses this address during checkout and location selection.</p></header><form onSubmit={save} className="account-form"><label>Label<input name="label" defaultValue={user.address?.label ?? "Home"} required /></label><label className="wide">Address<input name="line1" defaultValue={user.address?.line1 ?? ""} placeholder="Flat, building and street" required /></label><label>City<input name="city" defaultValue={user.address?.city ?? ""} required /></label><label>PIN code<input name="pincode" defaultValue={user.address?.pincode ?? ""} inputMode="numeric" required /></label><button>Save address</button></form></>}
-          {view === "orders" && (user.orders.length ? <><header><span>ORDER HISTORY</span><h2>Your orders</h2><p>Review recent baskets and order details.</p></header><div className="account-orders">{user.orders.map((order) => <article key={order.id}><div><strong>{order.id}</strong><small>{new Date(order.createdAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</small></div><span>{order.itemCount} {order.itemCount === 1 ? "item" : "items"}</span><b>₹{order.total}</b><em>{order.status}</em></article>)}</div></> : <EmptyPanel icon={Package} title="No orders yet" copy="Your completed Zaply orders will appear here, ready to review or reorder." />)}
+          {view === "orders" && (user.orders.length ? <><header><span>ORDER HISTORY</span><h2>Your orders</h2><p>Review recent baskets or split a paid order with friends.</p></header><div className="account-orders">{user.orders.map((order) => <div className="account-order-block" key={order.id}><article><div><strong>{order.id}</strong><small>{new Date(order.createdAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</small></div><span>{order.itemCount} {order.itemCount === 1 ? "item" : "items"}</span><b>₹{order.total}</b><em>{order.status.replaceAll("_", " ")}</em>{order.status === "paid" && <button className="order-split-button" onClick={() => order.splitId ? router.push(`/split/manage/${order.splitId}`) : setSplitOrderId(splitOrderId === order.id ? "" : order.id)}>{order.splitId ? "Manage split" : "Split with friends"}</button>}</article>{splitOrderId === order.id && !order.splitId && <form className="split-order-form" onSubmit={(event) => createSplit(event, order.id)}><label>Your UPI ID<input value={ownerVpa} onChange={(event) => setOwnerVpa(event.target.value)} placeholder="yourname@bank" required /></label><div><p>Friends will reimburse this UPI ID directly. Zaply never receives their money.</p><button disabled={splitBusy}>{splitBusy ? "Creating…" : "Create private split"}</button></div></form>}</div>)}</div></> : <EmptyPanel icon={Package} title="No orders yet" copy="Your completed Zaply orders will appear here, ready to review or reorder." />)}
           {view === "payments" && <EmptyPanel icon={CreditCard} title="No payment methods saved" copy="For your security, payment details will be handled by the payment provider during checkout." />}
           {view === "preferences" && <><header><span>PERSONALISATION</span><h2>Shopping preferences</h2><p>Choose how Zaply personalises recommendations and substitutions.</p></header><div className="preference-list"><label><span><strong>Use order history</strong><small>Personalise results using products you purchase.</small></span><input type="checkbox" defaultChecked /></label><label><span><strong>Offers and price alerts</strong><small>Receive updates about relevant deals.</small></span><input type="checkbox" /></label><label><span><strong>Substitution approval</strong><small>Ask before replacing unavailable products.</small></span><input type="checkbox" defaultChecked /></label></div></>}
           {view === "help" && <EmptyPanel icon={CircleHelp} title="How can we help?" copy="Order support, common questions, and live assistance will be available here when the support service is connected." />}

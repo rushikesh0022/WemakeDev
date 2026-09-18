@@ -17,10 +17,17 @@ export type Address = {
 export type AccountOrder = {
   id: string;
   createdAt: string;
-  status: "confirmed";
+  status: "payment_pending" | "paid" | "payment_failed" | "refunded";
+  paymentStatus: "pending" | "approved" | "declined" | "timed_out" | "refunded";
+  paymentProvider: "fake" | "amazon_pay";
+  paymentTransactionId: string;
   total: number;
+  finalTotalPaise: number;
+  sharedChargePaise: number;
+  orderDiscountPaise: number;
   itemCount: number;
-  items: Array<{ productId: string; name: string; quantity: number; price: number }>;
+  items: Array<{ lineId: string; productId: string; name: string; quantity: number; price: number }>;
+  splitId?: string;
 };
 
 type StoredUser = {
@@ -43,7 +50,36 @@ const usersFile = path.join(dataDirectory, "users.json");
 
 function publicUser(user: StoredUser): PublicUser {
   const { passwordHash: _hash, passwordSalt: _salt, ...safe } = user;
-  return { ...safe, phone: safe.phone ?? "", address: safe.address ?? null, orders: safe.orders ?? [] };
+  return { ...safe, phone: safe.phone ?? "", address: safe.address ?? null, orders: (safe.orders ?? []).map(normalizeOrder) };
+}
+
+function normalizeOrder(order: AccountOrder | Record<string, unknown>): AccountOrder {
+  const record = order as Partial<AccountOrder> & { status?: string; items?: Array<Partial<AccountOrder["items"][number]>> };
+  const rawStatus = (order as unknown as { status?: string }).status;
+  const items = (record.items ?? []).map((item, index) => ({
+    lineId: item.lineId ?? `line_${index + 1}`,
+    productId: String(item.productId ?? ""),
+    name: String(item.name ?? "Item"),
+    quantity: Math.max(1, Number(item.quantity) || 1),
+    price: Math.max(0, Number(item.price) || 0)
+  }));
+  const total = Math.max(0, Number(record.total) || items.reduce((sum, item) => sum + item.price * item.quantity, 0));
+  const legacyPaid = rawStatus === "confirmed";
+  return {
+    id: String(record.id ?? ""),
+    createdAt: String(record.createdAt ?? new Date(0).toISOString()),
+    status: legacyPaid ? "paid" : rawStatus === "payment_pending" || rawStatus === "paid" || rawStatus === "payment_failed" || rawStatus === "refunded" ? rawStatus : "paid",
+    paymentStatus: record.paymentStatus ?? (legacyPaid ? "approved" : "approved"),
+    paymentProvider: record.paymentProvider ?? "fake",
+    paymentTransactionId: record.paymentTransactionId ?? `legacy_${String(record.id ?? "order")}`,
+    total,
+    finalTotalPaise: record.finalTotalPaise ?? Math.round(total * 100),
+    sharedChargePaise: record.sharedChargePaise ?? 0,
+    orderDiscountPaise: record.orderDiscountPaise ?? 0,
+    itemCount: record.itemCount ?? items.reduce((sum, item) => sum + item.quantity, 0),
+    items,
+    splitId: record.splitId
+  };
 }
 
 async function readUsers(): Promise<StoredUser[]> {
@@ -123,19 +159,58 @@ export async function updateUser(userId: string, input: { name?: string; phone?:
   return publicUser(users[index]);
 }
 
-export async function createOrder(userId: string, input: { total: number; items: AccountOrder["items"] }) {
+export async function createOrder(userId: string, input: { total: number; items: Array<Omit<AccountOrder["items"][number], "lineId">>; paymentTransactionId: string; paymentProvider: AccountOrder["paymentProvider"] }) {
   const users = await readUsers();
   const index = users.findIndex((user) => user.id === userId);
   if (index < 0) return null;
   const order: AccountOrder = {
     id: `ZP${Date.now().toString(36).toUpperCase()}`,
     createdAt: new Date().toISOString(),
-    status: "confirmed",
+    status: "payment_pending",
+    paymentStatus: "pending",
+    paymentProvider: input.paymentProvider,
+    paymentTransactionId: input.paymentTransactionId,
     total: Math.max(0, Math.round(input.total)),
+    finalTotalPaise: Math.max(0, Math.round(input.total * 100)),
+    sharedChargePaise: 0,
+    orderDiscountPaise: 0,
     itemCount: input.items.reduce((sum, item) => sum + item.quantity, 0),
-    items: input.items.slice(0, 100)
+    items: input.items.slice(0, 100).map((item, index) => ({ ...item, lineId: `line_${index + 1}` }))
   };
   users[index] = { ...users[index], orders: [order, ...(users[index].orders ?? [])] };
+  await writeUsers(users);
+  return order;
+}
+
+export async function getOrder(userId: string, orderId: string) {
+  const user = (await readUsers()).find((candidate) => candidate.id === userId);
+  const order = user?.orders?.find((candidate) => candidate.id === orderId);
+  return order ? normalizeOrder(order) : null;
+}
+
+export async function updateOrderPayment(userId: string, orderId: string, paymentStatus: AccountOrder["paymentStatus"]) {
+  const users = await readUsers();
+  const userIndex = users.findIndex((user) => user.id === userId);
+  if (userIndex < 0) return null;
+  const orderIndex = users[userIndex].orders.findIndex((order) => order.id === orderId);
+  if (orderIndex < 0) return null;
+  const order = normalizeOrder(users[userIndex].orders[orderIndex]);
+  order.paymentStatus = paymentStatus;
+  order.status = paymentStatus === "approved" ? "paid" : paymentStatus === "declined" || paymentStatus === "timed_out" ? "payment_failed" : paymentStatus === "refunded" ? "refunded" : "payment_pending";
+  users[userIndex].orders[orderIndex] = order;
+  await writeUsers(users);
+  return order;
+}
+
+export async function attachSplitToOrder(userId: string, orderId: string, splitId: string) {
+  const users = await readUsers();
+  const userIndex = users.findIndex((user) => user.id === userId);
+  if (userIndex < 0) return null;
+  const orderIndex = users[userIndex].orders.findIndex((order) => order.id === orderId);
+  if (orderIndex < 0) return null;
+  const order = normalizeOrder(users[userIndex].orders[orderIndex]);
+  order.splitId = splitId;
+  users[userIndex].orders[orderIndex] = order;
   await writeUsers(users);
   return order;
 }

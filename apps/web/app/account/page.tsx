@@ -4,7 +4,8 @@ import { currentUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
-export default async function AccountPage() {
+export default async function AccountPage({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
   const user = await currentUser();
-  return user ? <AccountExperience initialUser={user} /> : <AuthExperience />;
+  const view = (await searchParams).view === "orders" ? "orders" : "home";
+  return user ? <AccountExperience initialUser={user} initialView={view} /> : <AuthExperience />;
 }

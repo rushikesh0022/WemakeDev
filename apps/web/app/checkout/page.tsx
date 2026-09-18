@@ -7,5 +7,5 @@ export const dynamic = "force-dynamic";
 export default async function CheckoutPage() {
   const user = await currentUser();
   if (!user) redirect("/account?next=/checkout");
-  return <CheckoutExperience user={user} />;
+  return <CheckoutExperience user={user} allowPaymentSimulation={process.env.NODE_ENV !== "production"} />;
 }
