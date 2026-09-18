@@ -28,6 +28,7 @@ The query-understanding response has no intent, mission, occasion, recipe, or im
 - Server-only `/api/recommend` route for model access and catalog grounding.
 - Local TypeScript catalog with fictional inventory and prices plus all 81 GroceryStoreDataset classes.
 - Browser-local cart and recent-item affinity.
+- Local file-backed customer accounts with salted password hashes, signed HTTP-only sessions, persisted addresses and order history.
 - OpenAI Responses API with strict JSON schema, or Ollama with the same schema.
 - Normal product queries never call the model; the user explicitly promotes the same query to AI planning.
 
@@ -38,6 +39,7 @@ The query-understanding response has no intent, mission, occasion, recipe, or im
 | Next.js server route | API Gateway + Lambda or ECS/Fargate recommendation service |
 | Catalog array | Aurora PostgreSQL + pgvector, fed by retailer inventory streams |
 | Browser history | DynamoDB customer events and profile features |
+| Local account and session adapter | Cognito user pools + DynamoDB/Aurora customer profile and order services |
 | Lexical retrieval | OpenSearch vector and keyword hybrid retrieval |
 | Environment model adapter | Bedrock model invocation |
 | In-memory/public scores | Kinesis events → S3/Glue → batch and streaming feature jobs |

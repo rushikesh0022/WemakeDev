@@ -41,7 +41,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>}
           </form>
           <nav className="desktop-actions">
-            <Link href="/admin"><LayoutGrid size={19} /><span>Admin</span></Link>
+            <Link href="/account"><UserRound size={19} /><span>Account</span></Link>
             <Link href="/cart" className="cart-link"><ShoppingBag size={20} /><span>{count ? `${count} · ₹${total}` : "Cart"}</span></Link>
           </nav>
         </div>
@@ -55,7 +55,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <Link href="/#categories" className={pathname.startsWith("/category") ? "active" : ""}><LayoutGrid /><span>Categories</span></Link>
         <Link href="/search" className={pathname.startsWith("/search") ? "active" : ""}><Search /><span>Search</span></Link>
         <Link href="/cart" className={pathname === "/cart" ? "active" : ""}><Package /><span>Cart</span></Link>
-        <Link href="/admin"><UserRound /><span>Account</span></Link>
+        <Link href="/account" className={pathname.startsWith("/account") ? "active" : ""}><UserRound /><span>Account</span></Link>
       </nav>
     </div>
   );

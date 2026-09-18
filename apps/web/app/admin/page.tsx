@@ -1,8 +1,15 @@
 import Link from "next/link";
 import { Activity, ArrowLeft, BrainCircuit, Database, PackageCheck, Search } from "lucide-react";
+import { redirect } from "next/navigation";
 import { categories, products } from "@/lib/catalog";
+import { currentUser } from "@/lib/auth";
 
-export default function AdminPage() {
+export const dynamic = "force-dynamic";
+
+export default async function AdminPage() {
+  const user = await currentUser();
+  if (!user) redirect("/account?next=/admin");
+  if (user.role !== "admin") redirect("/account?error=forbidden");
   const available = products.filter((product) => product.stock > 0);
   const averageRating = available.reduce((sum, product) => sum + product.rating, 0) / Math.max(1, available.length);
   const inventoryUnits = available.reduce((sum, product) => sum + product.stock, 0);
