@@ -11,12 +11,47 @@
 }
 
 body { background: #fffefa; }
-.topbar { background: rgba(255,254,250,.96); border-bottom-color: #e8ece5; }
-.brand-mark { color: #101b14; font-size: 28px; letter-spacing: -2.2px; }
-.brand-mark span { color: #101b14; }
-.brand-mark i { width: 10px; height: 10px; background: #4a9b54; border-radius: 70% 0 70% 0; transform: rotate(-28deg); right: -9px; top: -2px; }
+.topbar { z-index: 70; background: rgba(255,254,250,.96); border-bottom-color: #e8ece5; }
+.brand-mark { display: flex; align-items: center; gap: 6px; color: #102d1c; font-size: 28px; letter-spacing: -2.2px; }
+.brand-mark span { color: #102d1c; }
+.brand-mark__leaf { width: 25px; height: 25px; transform: rotate(-18deg); color: #28733b; stroke-width: 1.5; }
 .eta-badge { background: #eaf5e7; color: var(--zaply); }
 .desktop-actions .cart-link,.floating-cart { background: var(--zaply-dark); }
+
+.location-picker { position: relative; min-width: 245px; }
+.location-trigger { width: 100%; min-height: 48px; display: grid; grid-template-columns: 22px minmax(0,1fr) auto; align-items: center; gap: 8px; border: 0; padding: 3px 4px; background: transparent; color: #17231b; text-align: left; }
+.location-trigger__pin { width: 21px; color: var(--zaply-dark); fill: #edf6e9; }
+.location-trigger>span { min-width: 0; display: flex; flex-direction: column; }
+.location-trigger small { color: #7a847c; font-size: 8px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; }
+.location-trigger strong { display: flex; align-items: center; min-width: 0; margin-top: 2px; font: 750 12px Manrope; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.location-trigger strong svg { width: 14px; min-width: 14px; margin-left: 3px; }
+.location-trigger>b { display: flex; align-items: center; gap: 3px; padding: 7px 8px; border-radius: 999px; color: #27753c; background: #e6f6df; font-size: 9px; white-space: nowrap; }
+.location-trigger>b svg { width: 12px; fill: currentColor; }
+.location-backdrop { position: fixed; z-index: 80; inset: 0; border: 0; background: rgba(13,28,17,.2); backdrop-filter: blur(2px); }
+.location-panel { position: absolute; z-index: 81; top: calc(100% + 11px); left: 0; width: 410px; padding: 20px; border: 1px solid #dfe7dc; border-radius: 20px; background: #fffefa; box-shadow: 0 24px 70px rgba(18,48,26,.2); color: #17231b; }
+.location-panel>header { display: flex; align-items: flex-start; justify-content: space-between; gap: 15px; }
+.location-panel>header span { color: var(--zaply); font-size: 8px; font-weight: 800; letter-spacing: 1.3px; }
+.location-panel h2 { margin: 4px 0 0; font: 760 22px Manrope; }
+.location-panel>header button { width: 34px; height: 34px; display: grid; place-items: center; border: 0; border-radius: 10px; background: #f0f3ee; color: #536057; }
+.location-panel>header button svg { width: 17px; }
+.detect-location,.saved-location { width: 100%; margin-top: 16px; display: grid; grid-template-columns: 38px 1fr 20px; align-items: center; gap: 11px; border: 1px solid #dfe7dc; border-radius: 13px; padding: 12px; background: white; color: var(--zaply-dark); text-align: left; }
+.detect-location>svg:first-child,.saved-location>svg:first-child { width: 38px; height: 38px; padding: 9px; border-radius: 11px; color: var(--zaply); background: #edf7e9; }
+.detect-location>svg:last-child,.saved-location>svg:last-child { width: 17px; color: var(--zaply); }
+.detect-location span,.saved-location span { min-width: 0; display: flex; flex-direction: column; }
+.detect-location strong,.saved-location strong { font-size: 12px; }
+.detect-location small,.saved-location small { margin-top: 3px; color: #7c867f; font-size: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.detect-location:disabled { opacity: .65; }
+.location-divider { display: flex; align-items: center; gap: 10px; margin: 17px 0; color: #929a94; font-size: 9px; }
+.location-divider:before,.location-divider:after { content: ""; height: 1px; flex: 1; background: #e8ebe6; }
+.location-panel form { display: grid; gap: 11px; }
+.location-labels { display: flex; gap: 6px; }
+.location-labels button { border: 1px solid #dfe5dc; border-radius: 999px; padding: 6px 10px; background: white; color: #647068; font-size: 9px; font-weight: 750; }
+.location-labels button.active { color: white; border-color: var(--zaply-dark); background: var(--zaply-dark); }
+.location-panel form label { display: grid; gap: 6px; color: #5c685f; font-size: 10px; font-weight: 700; }
+.location-panel form input { width: 100%; height: 44px; border: 1px solid #dfe5dc; border-radius: 10px; padding: 0 12px; outline: 0; background: white; }
+.location-panel form input:focus { border-color: #66a173; box-shadow: 0 0 0 3px rgba(35,122,59,.08); }
+.save-location { height: 43px; border: 0; border-radius: 10px; background: var(--zaply-dark); color: white; font-weight: 750; }
+.location-panel>footer { margin-top: 14px; color: #9aa09b; font-size: 8px; text-align: center; }
 
 .global-search { position: relative; max-width: 670px; border-color: #dfe5dc; background: #f7f8f5; border-radius: 999px; }
 .global-search:focus-within { border-color: #72a67b; box-shadow: 0 0 0 4px rgba(35,122,59,.1); }
@@ -180,11 +215,16 @@ body { background: #fffefa; }
     column-gap: 10px;
     row-gap: 7px;
   }
-  .brand-mark { grid-column: 1; grid-row: 1; font-size: 25px; }
-  .location-button { grid-column: 2; grid-row: 1; width: 100%; min-width: 0; }
-  .location-button .eta-badge { flex: 0 0 42px; }
-  .location-button span:last-child { min-width: 0; }
-  .location-button strong { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .brand-mark { grid-column: 1; grid-row: 1; gap: 3px; font-size: 25px; }
+  .brand-mark__leaf { width: 18px; height: 18px; }
+  .location-picker { grid-column: 2; grid-row: 1; width: 100%; min-width: 0; }
+  .location-trigger { min-height: 42px; grid-template-columns: 17px minmax(0,1fr) auto; gap: 5px; padding: 0; }
+  .location-trigger__pin { width: 16px; }
+  .location-trigger small { font-size: 6px; }
+  .location-trigger strong { font-size: 9px; }
+  .location-trigger>b { padding: 5px 6px; font-size: 7px; }
+  .location-trigger>b svg { width: 9px; }
+  .location-panel { position: fixed; top: 122px; left: 12px; right: 12px; width: auto; max-height: calc(100vh - 142px); overflow: auto; padding: 18px; border-radius: 18px; }
   .desktop-actions { grid-column: 3; grid-row: 1; margin: 0; }
   .global-search {
     grid-column: 1 / -1;

@@ -19,6 +19,8 @@ cp apps/web/.env.example apps/web/.env.local
 
 Open [http://localhost:3000](http://localhost:3000). The top search returns normal catalog results first. Choose **Ask Zaply AI** below autocomplete or below the results when the same text describes a recipe, occasion, or goal. The API key is never sent to the browser.
 
+The delivery header accepts a saved account address, a manually entered neighbourhood, or browser location. GPS is requested only after the customer chooses **Use my current location**; the server converts the coordinates to a suburb-level label and the browser stores that label for future visits. The local MVP uses OpenStreetMap Nominatim for this lookup. Set `GEOCODING_REVERSE_URL` to a managed or self-hosted endpoint for production traffic.
+
 Customer accounts use salted `scrypt` password hashes and signed HTTP-only session cookies. Set a long random `AUTH_SECRET` before deployment. To grant the separate control-room role, list approved email addresses in `ADMIN_EMAILS` as a comma-separated value before those users register. Local account records are written to the ignored `apps/web/.zaply-data` directory; replace this adapter with Cognito or a managed database in production.
 
 To use Ollama instead, set `LLM_PROVIDER=ollama` in `apps/web/.env.local` and run the configured local model.

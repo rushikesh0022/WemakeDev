@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Home, LayoutGrid, Package, Search, ShoppingBag, Sparkles, UserRound } from "lucide-react";
+import { ArrowRight, Home, LayoutGrid, Leaf, Package, Search, ShoppingBag, Sparkles, UserRound } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
 import { useCart } from "@/lib/cart-context";
-import { categories, products, searchProducts } from "@/lib/catalog";
-import { store } from "@/lib/store";
+import { searchProducts } from "@/lib/catalog";
+import { LocationPicker } from "./LocationPicker";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -28,8 +28,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="app-shell">
       <header className="topbar">
         <div className="topbar__inner">
-          <Link href="/" className="brand-mark" aria-label="Zaply home"><span>zap</span>ly<i /></Link>
-          <div className="location-button"><span className="eta-badge">{store.eta}</span><span><strong>{store.location}</strong><small>{products.length} products · {categories.length} departments</small></span></div>
+          <Link href="/" className="brand-mark" aria-label="Zaply home"><Leaf className="brand-mark__leaf" fill="currentColor" /><span>zaply</span></Link>
+          <LocationPicker />
           <form className="global-search" onSubmit={submit} role="search" onFocus={() => setSearchOpen(true)}>
             <Search size={19} />
             <input value={query} onChange={(event) => { setQuery(event.target.value); setSearchOpen(true); }} placeholder="Search products, brands or ask for a plan" aria-label="Search products, brands or ask for a plan" />
