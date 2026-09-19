@@ -30,6 +30,7 @@ type ProviderResult = Pick<PaymentTransaction, "providerReference" | "approvedAm
 export interface PaymentProvider {
   readonly id: PaymentTransaction["provider"];
   capture(transaction: PaymentTransaction): Promise<ProviderResult>;
+  getStatus?(transaction: PaymentTransaction): Promise<ProviderResult>;
 }
 
 export class FakePaymentProvider implements PaymentProvider {
@@ -90,18 +91,27 @@ export class AmazonPayProvider implements PaymentProvider {
     });
     const body = await response.json().catch(() => ({})) as Record<string, unknown>;
     if (!response.ok) throw new Error(readProviderMessage(body) || `Amazon Pay Charge failed (${response.status}).`);
-    const providerStatus = String(body.status ?? body.chargeStatus ?? body.captureStatus ?? "");
-    const status: PaymentStatus = providerStatus === "CaptureApproved" ? "approved" : providerStatus === "CapturePending" ? "pending" : "declined";
-    const providerReference = String(body.amazonChargeId ?? body.chargeId ?? body.transactionId ?? chargeId);
-    return {
-      providerReference,
-      approvedAmountPaise: status === "approved" ? transaction.requestedAmountPaise : 0,
-      status,
-      providerResponse: {
-        result: providerStatus || status,
-        ...(typeof body.amazonPayUrl === "string" ? { amazonPayUrl: body.amazonPayUrl } : {})
-      }
-    };
+    return providerResult(body, transaction, chargeId);
+  }
+
+  async getStatus(transaction: PaymentTransaction): Promise<ProviderResult> {
+    if (!transaction.sourceIp || !transaction.sourceUserAgent) throw new Error("Amazon Pay requires the original payer request context.");
+    const merchantId = requiredAmazonConfig("AMAZON_PAY_MERCHANT_ID");
+    const accessKey = requiredAmazonConfig("AMAZON_PAY_ACCESS_KEY");
+    const secretKey = requiredAmazonConfig("AMAZON_PAY_SECRET_KEY");
+    const hostname = process.env.AMAZON_PAY_ENVIRONMENT === "production" ? "amazonpay.amazon.in" : "amazonpay-sandbox.amazon.in";
+    const path = "/v1/payments/charge";
+    const query = { merchantId, txnId: transaction.id, txnIdType: "MerchantTxnId" };
+    const signed = signAmazonPayRequest({
+      method: "GET", hostname, path, query, merchantId, accessKey, secretKey,
+      sourceIp: transaction.sourceIp, sourceUserAgent: transaction.sourceUserAgent
+    });
+    const response = await fetch(`https://${hostname}${path}?${new URLSearchParams(query)}`, {
+      headers: signed.headers, signal: AbortSignal.timeout(15_000), cache: "no-store"
+    });
+    const body = await response.json().catch(() => ({})) as Record<string, unknown>;
+    if (!response.ok) throw new Error(readProviderMessage(body) || `Amazon Pay Status failed (${response.status}).`);
+    return providerResult(body, transaction, transaction.providerReference || transaction.id);
   }
 }
 
@@ -116,6 +126,20 @@ function readProviderMessage(body: Record<string, unknown>) {
     if (typeof body[key] === "string") return body[key] as string;
   }
   return null;
+}
+
+function providerResult(body: Record<string, unknown>, transaction: PaymentTransaction, fallbackReference: string): ProviderResult {
+  const providerStatus = String(body.status ?? body.chargeStatus ?? body.captureStatus ?? "");
+  const status: PaymentStatus = providerStatus === "CaptureApproved" ? "approved" : providerStatus === "CapturePending" ? "pending" : "declined";
+  return {
+    providerReference: String(body.amazonChargeId ?? body.chargeId ?? body.transactionId ?? fallbackReference),
+    approvedAmountPaise: status === "approved" ? transaction.requestedAmountPaise : 0,
+    status,
+    providerResponse: {
+      result: providerStatus || status,
+      ...(typeof body.amazonPayUrl === "string" ? { amazonPayUrl: body.amazonPayUrl } : {})
+    }
+  };
 }
 
 let writeQueue = Promise.resolve();
@@ -165,7 +189,10 @@ export async function capturePayment(transactionId: string) {
   const transaction = transactions.find((candidate) => candidate.id === transactionId);
   if (!transaction) throw new Error("Payment transaction was not found.");
   const provider: PaymentProvider = transaction.provider === "amazon_pay" ? new AmazonPayProvider() : new FakePaymentProvider();
-  const result = await provider.capture(transaction);
+  if (transaction.status === "approved" || transaction.status === "refunded") return transaction;
+  const result = transaction.provider === "amazon_pay" && Object.keys(transaction.providerResponse).length > 0 && provider.getStatus
+    ? await provider.getStatus(transaction)
+    : await provider.capture(transaction);
   return serialize(async () => {
     const latest = await readTransactions();
     const index = latest.findIndex((candidate) => candidate.id === transactionId);

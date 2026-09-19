@@ -300,10 +300,12 @@ export async function payContribution(token: string, cookieValue: string | null 
     if (!participant.amazonLinked) throw new Error("Link Amazon Pay before paying.");
     const contribution = group.contributions.find((item) => item.id === contributionId && item.participantId === participant.id); if (!contribution) throw new Error("Contribution was not found.");
     if (contribution.status === "paid") return { alreadyPaid: true as const, group: publicView(group, cookieValue) };
-    const transaction = await createPaymentTransaction(contribution.amountPaise, "success", {
-      amazonAuthorizationId: participant.amazonAuthorizationId,
-      ...requestContext
-    });
+    const transaction = contribution.status === "pending" && contribution.paymentTransactionId
+      ? { id: contribution.paymentTransactionId }
+      : await createPaymentTransaction(contribution.amountPaise, "success", {
+        amazonAuthorizationId: participant.amazonAuthorizationId,
+        ...requestContext
+      });
     contribution.status = "pending"; contribution.paymentTransactionId = transaction.id; group.updatedAt = new Date().toISOString(); await writeGroups(groups);
     return { alreadyPaid: false as const, transactionId: transaction.id, groupId: group.id, participantId: participant.id };
   });
@@ -365,10 +367,14 @@ export async function placeGroupOrder(ownerId: string, groupId: string, requestC
     if (group.status === "placed") return { placed: true as const, group: ownerView(group) };
     if (group.status !== "ready") throw new Error("Wait for every friend contribution before placing the order.");
     if (group.ownerPayablePaise > 0 && !group.ownerAmazonLinked) throw new Error("Link Amazon Pay before paying your share.");
-    const transaction = group.ownerPayablePaise > 0 ? await createPaymentTransaction(group.ownerPayablePaise, "success", {
-      amazonAuthorizationId: group.ownerAmazonAuthorizationId,
-      ...requestContext
-    }) : null;
+    const transaction = group.ownerPayablePaise > 0
+      ? group.ownerContributionStatus === "pending" && group.ownerPaymentTransactionId
+        ? { id: group.ownerPaymentTransactionId }
+        : await createPaymentTransaction(group.ownerPayablePaise, "success", {
+          amazonAuthorizationId: group.ownerAmazonAuthorizationId,
+          ...requestContext
+        })
+      : null;
     group.ownerContributionStatus = transaction ? "pending" : "paid"; group.ownerPaymentTransactionId = transaction?.id ?? null; group.updatedAt = new Date().toISOString(); await writeGroups(groups);
     return { placed: false as const, transactionId: transaction?.id ?? null, groupId: group.id, items: group.items, fallbackTransactionId: group.contributions[0]?.paymentTransactionId ?? `group_${group.id}` };
   });
