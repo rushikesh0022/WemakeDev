@@ -32,6 +32,7 @@ export function getAwsRuntimeStatus(): AwsRuntimeStatus {
     oauthClientSecret: clean(process.env.AMAZON_PAY_OAUTH_CLIENT_SECRET),
     redirectUri: clean(process.env.AMAZON_PAY_REDIRECT_URI),
     ipnUrl: clean(process.env.AMAZON_PAY_IPN_URL),
+    snsTopicArn: clean(process.env.AMAZON_PAY_SNS_TOPIC_ARN),
     tokenEncryptionKey: clean(process.env.AMAZON_PAY_TOKEN_ENCRYPTION_KEY)
   };
   const amazonPayMissingFields = Object.entries(amazonPayFields)

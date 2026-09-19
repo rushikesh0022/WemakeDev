@@ -1,6 +1,8 @@
 import "server-only";
 
 import { randomUUID } from "node:crypto";
+import { getAmazonAccessToken } from "./amazon-pay";
+import { signAmazonPayRequest } from "./amazon-pay-signature";
 import { readState, writeState } from "./state-store";
 
 export type PaymentStatus = "pending" | "approved" | "declined" | "timed_out" | "refunded";
@@ -51,8 +53,69 @@ export class AmazonPayProvider implements PaymentProvider {
   async capture(transaction: PaymentTransaction): Promise<ProviderResult> {
     if (!transaction.amazonAuthorizationId) throw new Error("Link Amazon Pay to this payer before creating a charge.");
     if (!transaction.sourceIp || !transaction.sourceUserAgent) throw new Error("Amazon Pay requires the payer request context before creating a charge.");
-    throw new Error("Amazon Pay account linking is ready, but sandbox Charge and Status calls remain disabled until merchant signing credentials and safelisted callbacks are configured.");
+    const merchantId = requiredAmazonConfig("AMAZON_PAY_MERCHANT_ID");
+    const accessKey = requiredAmazonConfig("AMAZON_PAY_ACCESS_KEY");
+    const secretKey = requiredAmazonConfig("AMAZON_PAY_SECRET_KEY");
+    const callbackUrl = requiredAmazonConfig("AMAZON_PAY_IPN_URL");
+    const hostname = process.env.AMAZON_PAY_ENVIRONMENT === "production" ? "amazonpay.amazon.in" : "amazonpay-sandbox.amazon.in";
+    const path = "/v1/payments/charge";
+    const accessToken = await getAmazonAccessToken(transaction.amazonAuthorizationId);
+    const chargeId = transaction.id.replace(/[^A-Za-z0-9_-]/g, "").slice(0, 50);
+    const payload = {
+      accessToken,
+      amount: (transaction.requestedAmountPaise / 100).toFixed(2),
+      attributableProgram: "S2SPay",
+      callbackUrl,
+      chargeId,
+      currencyCode: "INR",
+      customData: transaction.id,
+      intent: "Capture",
+      merchantId,
+      noteToCustomer: "Nesto order payment",
+      paymentMetaData: "",
+      referenceId: chargeId,
+      selectedPaymentInstrumentType: "AmazonPayBalance",
+      timeoutInSecs: "900"
+    };
+    const signed = signAmazonPayRequest({
+      method: "POST", hostname, path, payload, merchantId, accessKey, secretKey,
+      sourceIp: transaction.sourceIp,
+      sourceUserAgent: transaction.sourceUserAgent
+    });
+    const response = await fetch(`https://${hostname}${path}`, {
+      method: "POST",
+      headers: { "content-type": "application/json", ...signed.headers },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(15_000)
+    });
+    const body = await response.json().catch(() => ({})) as Record<string, unknown>;
+    if (!response.ok) throw new Error(readProviderMessage(body) || `Amazon Pay Charge failed (${response.status}).`);
+    const providerStatus = String(body.status ?? body.chargeStatus ?? body.captureStatus ?? "");
+    const status: PaymentStatus = providerStatus === "CaptureApproved" ? "approved" : providerStatus === "CapturePending" ? "pending" : "declined";
+    const providerReference = String(body.amazonChargeId ?? body.chargeId ?? body.transactionId ?? chargeId);
+    return {
+      providerReference,
+      approvedAmountPaise: status === "approved" ? transaction.requestedAmountPaise : 0,
+      status,
+      providerResponse: {
+        result: providerStatus || status,
+        ...(typeof body.amazonPayUrl === "string" ? { amazonPayUrl: body.amazonPayUrl } : {})
+      }
+    };
   }
+}
+
+function requiredAmazonConfig(name: string) {
+  const value = process.env[name]?.trim();
+  if (!value) throw new Error(`${name} is required for Amazon Pay.`);
+  return value;
+}
+
+function readProviderMessage(body: Record<string, unknown>) {
+  for (const key of ["message", "errorMessage", "reasonDescription", "description"]) {
+    if (typeof body[key] === "string") return body[key] as string;
+  }
+  return null;
 }
 
 let writeQueue = Promise.resolve();
@@ -118,6 +181,9 @@ export async function applyAmazonPayIpn(payload: { transactionId: string; provid
     const transactions = await readTransactions();
     const index = transactions.findIndex((candidate) => candidate.id === payload.transactionId);
     if (index < 0) return null;
+    const current = transactions[index];
+    if (payload.approvedAmountPaise < 0 || payload.approvedAmountPaise > current.requestedAmountPaise) throw new Error("The Amazon Pay notification amount is invalid.");
+    if (current.status === "approved" && payload.status !== "refunded") return current;
     if (transactions[index].providerReference === payload.providerReference && transactions[index].status === payload.status) return transactions[index];
     transactions[index] = {
       ...transactions[index],

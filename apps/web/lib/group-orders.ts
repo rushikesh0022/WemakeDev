@@ -4,7 +4,7 @@ import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypt
 import { createOrder, updateOrderPayment, type AccountOrder } from "./auth";
 import { deriveGroupCollectionStatus } from "./group-state";
 import { calculateSettlementAmounts } from "./split-allocation";
-import { capturePayment, createPaymentTransaction } from "./payments";
+import { capturePayment, createPaymentTransaction, type PaymentTransaction } from "./payments";
 import { createAmazonLinkSession, type AmazonLinkTarget } from "./amazon-pay";
 import { readState, writeState } from "./state-store";
 
@@ -55,6 +55,7 @@ export type GroupOrder = {
   ownerAmazonLinked: boolean;
   ownerAmazonAuthorizationId?: string | null;
   ownerContributionStatus: ContributionStatus;
+  ownerPaymentTransactionId?: string | null;
   participants: GroupParticipant[];
   claims: GroupClaim[];
   contributions: GroupContribution[];
@@ -191,7 +192,7 @@ export async function createGroup(input: { ownerId: string; ownerName: string; i
       expiresAt: new Date(now.getTime() + 7 * 86400000).toISOString(), version: 1, status: "draft",
       items: input.items, finalTotalPaise: input.items.reduce((sum, item) => sum + item.quantity * item.unitPricePaise, 0),
       ownerPayablePaise: input.items.reduce((sum, item) => sum + item.quantity * item.unitPricePaise, 0),
-      ownerAmazonLinked: false, ownerAmazonAuthorizationId: null, ownerContributionStatus: "due", participants: [], claims: [], contributions: [],
+      ownerAmazonLinked: false, ownerAmazonAuthorizationId: null, ownerContributionStatus: "due", ownerPaymentTransactionId: null, participants: [], claims: [], contributions: [],
       orderId: null, createdAt: now.toISOString(), updatedAt: now.toISOString()
     };
     await writeGroups([...groups, group]);
@@ -311,7 +312,7 @@ export async function payContribution(token: string, cookieValue: string | null 
   return serialize(async () => {
     const groups = await readGroups(); const group = groups.find((candidate) => candidate.id === prepared.groupId); if (!group) return null;
     const contribution = group.contributions.find((item) => item.participantId === prepared.participantId && item.paymentTransactionId === prepared.transactionId); if (!contribution) return null;
-    contribution.status = payment.status === "approved" ? "paid" : "failed"; contribution.paidAt = payment.status === "approved" ? new Date().toISOString() : null;
+    contribution.status = payment.status === "approved" ? "paid" : payment.status === "pending" ? "pending" : "failed"; contribution.paidAt = payment.status === "approved" ? new Date().toISOString() : null;
     updateCollectionStatus(group); group.version++; group.updatedAt = new Date().toISOString(); await writeGroups(groups); return publicView(group, cookieValue);
   });
 }
@@ -368,16 +369,82 @@ export async function placeGroupOrder(ownerId: string, groupId: string, requestC
       amazonAuthorizationId: group.ownerAmazonAuthorizationId,
       ...requestContext
     }) : null;
-    group.ownerContributionStatus = transaction ? "pending" : "paid"; group.updatedAt = new Date().toISOString(); await writeGroups(groups);
+    group.ownerContributionStatus = transaction ? "pending" : "paid"; group.ownerPaymentTransactionId = transaction?.id ?? null; group.updatedAt = new Date().toISOString(); await writeGroups(groups);
     return { placed: false as const, transactionId: transaction?.id ?? null, groupId: group.id, items: group.items, fallbackTransactionId: group.contributions[0]?.paymentTransactionId ?? `group_${group.id}` };
   });
   if (!prepared || prepared.placed) return prepared?.group ?? null;
-  const payment = prepared.transactionId ? await capturePayment(prepared.transactionId) : null; if (payment && payment.status !== "approved") throw new Error("Amazon Pay did not approve the owner contribution.");
+  const payment = prepared.transactionId ? await capturePayment(prepared.transactionId) : null;
+  if (payment?.status === "pending") {
+    return serialize(async () => {
+      const groups = await readGroups(); const group = groups.find((candidate) => candidate.id === prepared.groupId); if (!group) return null;
+      group.ownerContributionStatus = "pending"; group.version++; group.updatedAt = new Date().toISOString(); await writeGroups(groups); return ownerView(group);
+    });
+  }
+  if (payment && payment.status !== "approved") {
+    await serialize(async () => {
+      const groups = await readGroups(); const group = groups.find((candidate) => candidate.id === prepared.groupId);
+      if (group) { group.ownerContributionStatus = "failed"; group.version++; group.updatedAt = new Date().toISOString(); await writeGroups(groups); }
+    });
+    throw new Error("Amazon Pay did not approve the owner contribution.");
+  }
   const order = await createOrder(ownerId, { total: prepared.items.reduce((sum, item) => sum + item.unitPricePaise * item.quantity, 0) / 100, paymentTransactionId: prepared.transactionId ?? prepared.fallbackTransactionId, paymentProvider: payment?.provider ?? (process.env.PAYMENT_PROVIDER === "amazon_pay" ? "amazon_pay" : "fake"), items: prepared.items.map((item) => ({ productId: item.productId, name: item.name, quantity: item.quantity, price: item.unitPricePaise / 100 })) });
   if (!order) throw new Error("Could not create the delivery order.");
   await updateOrderPayment(ownerId, order.id, "approved");
   return serialize(async () => {
     const groups = await readGroups(); const group = groups.find((candidate) => candidate.id === prepared.groupId); if (!group) return null;
     group.ownerContributionStatus = "paid"; group.orderId = order.id; group.status = "placed"; group.version++; group.updatedAt = new Date().toISOString(); await writeGroups(groups); return ownerView(group);
+  });
+}
+
+export async function applyGroupPaymentUpdate(payment: PaymentTransaction) {
+  const groups = await readGroups();
+  const contributionGroup = groups.find((group) => group.contributions.some((item) => item.paymentTransactionId === payment.id));
+  if (contributionGroup) {
+    return serialize(async () => {
+      const latest = await readGroups();
+      const group = latest.find((item) => item.id === contributionGroup.id);
+      const contribution = group?.contributions.find((item) => item.paymentTransactionId === payment.id);
+      if (!group || !contribution) return null;
+      contribution.status = payment.status === "approved" ? "paid" : payment.status === "pending" ? "pending" : "failed";
+      contribution.paidAt = payment.status === "approved" ? new Date().toISOString() : null;
+      updateCollectionStatus(group); group.version++; group.updatedAt = new Date().toISOString(); await writeGroups(latest);
+      return group;
+    });
+  }
+
+  const ownerGroup = groups.find((group) => group.ownerPaymentTransactionId === payment.id);
+  if (!ownerGroup) return null;
+  if (payment.status !== "approved") {
+    return serialize(async () => {
+      const latest = await readGroups(); const group = latest.find((item) => item.id === ownerGroup.id); if (!group) return null;
+      group.ownerContributionStatus = payment.status === "pending" ? "pending" : "failed";
+      group.version++; group.updatedAt = new Date().toISOString(); await writeGroups(latest); return group;
+    });
+  }
+  if (ownerGroup.orderId) return ownerGroup;
+  const reserved = await serialize(async () => {
+    const latest = await readGroups(); const group = latest.find((item) => item.id === ownerGroup.id); if (!group) return false;
+    if (group.orderId || group.ownerContributionStatus === "paid") return false;
+    group.ownerContributionStatus = "paid"; group.updatedAt = new Date().toISOString(); await writeGroups(latest); return true;
+  });
+  if (!reserved) return (await readGroups()).find((item) => item.id === ownerGroup.id) ?? null;
+  const order = await createOrder(ownerGroup.ownerId, {
+    total: ownerGroup.items.reduce((sum, item) => sum + item.unitPricePaise * item.quantity, 0) / 100,
+    paymentTransactionId: payment.id,
+    paymentProvider: payment.provider,
+    items: ownerGroup.items.map((item) => ({ productId: item.productId, name: item.name, quantity: item.quantity, price: item.unitPricePaise / 100 }))
+  });
+  if (!order) {
+    await serialize(async () => {
+      const latest = await readGroups(); const group = latest.find((item) => item.id === ownerGroup.id);
+      if (group && !group.orderId) { group.ownerContributionStatus = "failed"; group.updatedAt = new Date().toISOString(); await writeGroups(latest); }
+    });
+    throw new Error("Could not create the delivery order after Amazon Pay approval.");
+  }
+  await updateOrderPayment(ownerGroup.ownerId, order.id, "approved");
+  return serialize(async () => {
+    const latest = await readGroups(); const group = latest.find((item) => item.id === ownerGroup.id); if (!group) return null;
+    if (!group.orderId) { group.ownerContributionStatus = "paid"; group.orderId = order.id; group.status = "placed"; group.version++; group.updatedAt = new Date().toISOString(); await writeGroups(latest); }
+    return group;
   });
 }

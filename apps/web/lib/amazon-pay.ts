@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createCipheriv, createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
+import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import { readState, writeState } from "./state-store";
 
 export type AmazonLinkTarget =
@@ -79,6 +79,34 @@ function encryptTokens(tokens: { accessToken: string; refreshToken: string }) {
   return [iv, tag, ciphertext].map((part) => part.toString("base64url")).join(".");
 }
 
+function decryptTokens(value: string) {
+  const [ivValue, tagValue, ciphertextValue] = value.split(".");
+  if (!ivValue || !tagValue || !ciphertextValue) throw new Error("The saved Amazon Pay authorization is invalid.");
+  const decipher = createDecipheriv("aes-256-gcm", encryptionKey(), Buffer.from(ivValue, "base64url"));
+  decipher.setAuthTag(Buffer.from(tagValue, "base64url"));
+  const plaintext = Buffer.concat([
+    decipher.update(Buffer.from(ciphertextValue, "base64url")),
+    decipher.final()
+  ]).toString("utf8");
+  const tokens = JSON.parse(plaintext) as { accessToken?: string; refreshToken?: string };
+  if (!tokens.accessToken || !tokens.refreshToken) throw new Error("The saved Amazon Pay authorization is incomplete.");
+  return { accessToken: tokens.accessToken, refreshToken: tokens.refreshToken };
+}
+
+async function requestTokens(values: Record<string, string>) {
+  const response = await fetch("https://api.amazon.co.uk/auth/o2/token", {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded;charset=UTF-8" },
+    body: new URLSearchParams(values),
+    signal: AbortSignal.timeout(10_000)
+  });
+  const payload = await response.json() as TokenResponse;
+  if (!response.ok || !payload.access_token) {
+    throw new Error(payload.error_description || payload.error || "Amazon Pay token exchange failed.");
+  }
+  return payload;
+}
+
 function safeReturnTo(value: string) {
   if (!value.startsWith("/group/") || value.startsWith("//")) throw new Error("Invalid Amazon Pay return route.");
   return value;
@@ -131,27 +159,21 @@ export async function completeAmazonLink(state: string, code: string) {
   const session = await findActiveSession(state);
   if (!session) throw new Error("This Amazon Pay authorization has expired or was already used.");
 
-  const response = await fetch("https://api.amazon.co.uk/auth/o2/token", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      grant_type: "authorization_code",
-      code,
-      client_id: required("AMAZON_PAY_OAUTH_CLIENT_ID"),
-      client_secret: required("AMAZON_PAY_OAUTH_CLIENT_SECRET"),
-      redirect_uri: required("AMAZON_PAY_REDIRECT_URI")
-    }),
-    signal: AbortSignal.timeout(10_000)
+  const payload = await requestTokens({
+    grant_type: "authorization_code",
+    code,
+    client_id: required("AMAZON_PAY_OAUTH_CLIENT_ID"),
+    client_secret: required("AMAZON_PAY_OAUTH_CLIENT_SECRET"),
+    redirect_uri: required("AMAZON_PAY_REDIRECT_URI")
   });
-  const payload = await response.json() as TokenResponse;
-  if (!response.ok || !payload.access_token || !payload.refresh_token) {
-    throw new Error(payload.error_description || payload.error || "Amazon Pay token exchange failed.");
-  }
+  if (!payload.refresh_token) throw new Error("Amazon Pay did not return a refresh token.");
+  const accessToken = payload.access_token!;
+  const refreshToken = payload.refresh_token;
 
   const authorization: StoredAmazonAuthorization = {
     id: `amazon_auth_${randomUUID().replaceAll("-", "")}`,
     subjectKey: session.target.kind === "owner" ? `owner:${session.target.ownerId}` : `participant:${session.target.participantId}`,
-    encryptedTokens: encryptTokens({ accessToken: payload.access_token, refreshToken: payload.refresh_token }),
+    encryptedTokens: encryptTokens({ accessToken, refreshToken }),
     expiresAt: new Date(Date.now() + Math.max(60, Number(payload.expires_in) || 3600) * 1000).toISOString(),
     createdAt: new Date().toISOString()
   };
@@ -171,4 +193,35 @@ export async function completeAmazonLink(state: string, code: string) {
   });
 
   return { target: session.target, returnTo: session.returnTo, authorizationId: authorization.id };
+}
+
+export async function getAmazonAccessToken(authorizationId: string) {
+  const authorizations = await readState<StoredAmazonAuthorization[]>("amazon-authorizations", () => []);
+  const authorization = authorizations.find((item) => item.id === authorizationId);
+  if (!authorization) throw new Error("Link Amazon Pay again before paying.");
+  const tokens = decryptTokens(authorization.encryptedTokens);
+  if (Date.parse(authorization.expiresAt) > Date.now() + 5 * 60_000) return tokens.accessToken;
+
+  const payload = await requestTokens({
+    grant_type: "refresh_token",
+    refresh_token: tokens.refreshToken,
+    client_id: required("AMAZON_PAY_OAUTH_CLIENT_ID"),
+    client_secret: required("AMAZON_PAY_OAUTH_CLIENT_SECRET")
+  });
+  const refreshed = {
+    accessToken: payload.access_token!,
+    refreshToken: payload.refresh_token || tokens.refreshToken
+  };
+  await serialize(async () => {
+    const latest = await readState<StoredAmazonAuthorization[]>("amazon-authorizations", () => []);
+    const index = latest.findIndex((item) => item.id === authorizationId);
+    if (index < 0) throw new Error("Link Amazon Pay again before paying.");
+    latest[index] = {
+      ...latest[index],
+      encryptedTokens: encryptTokens(refreshed),
+      expiresAt: new Date(Date.now() + Math.max(60, Number(payload.expires_in) || 3600) * 1000).toISOString()
+    };
+    await writeState("amazon-authorizations", latest);
+  });
+  return refreshed.accessToken;
 }
