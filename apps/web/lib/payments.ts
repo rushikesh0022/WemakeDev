@@ -15,6 +15,9 @@ export type PaymentTransaction = {
   approvedAmountPaise: number;
   status: PaymentStatus;
   scenario?: FakePaymentScenario;
+  amazonAuthorizationId: string | null;
+  sourceIp: string | null;
+  sourceUserAgent: string | null;
   createdAt: string;
   updatedAt: string;
   providerResponse: Record<string, string>;
@@ -45,8 +48,10 @@ export class FakePaymentProvider implements PaymentProvider {
 export class AmazonPayProvider implements PaymentProvider {
   readonly id = "amazon_pay" as const;
 
-  async capture(): Promise<ProviderResult> {
-    throw new Error("Amazon Pay is not configured. Use the fake provider until sandbox credentials and safelisted callbacks are available.");
+  async capture(transaction: PaymentTransaction): Promise<ProviderResult> {
+    if (!transaction.amazonAuthorizationId) throw new Error("Link Amazon Pay to this payer before creating a charge.");
+    if (!transaction.sourceIp || !transaction.sourceUserAgent) throw new Error("Amazon Pay requires the payer request context before creating a charge.");
+    throw new Error("Amazon Pay account linking is ready, but sandbox Charge and Status calls remain disabled until merchant signing credentials and safelisted callbacks are configured.");
   }
 }
 
@@ -66,7 +71,7 @@ function serialize<T>(operation: () => Promise<T>) {
   return result;
 }
 
-export async function createPaymentTransaction(amountPaise: number, scenario: FakePaymentScenario = "success") {
+export async function createPaymentTransaction(amountPaise: number, scenario: FakePaymentScenario = "success", context: { amazonAuthorizationId?: string | null; sourceIp?: string | null; sourceUserAgent?: string | null } = {}) {
   return serialize(async () => {
     const now = new Date().toISOString();
     const provider = process.env.PAYMENT_PROVIDER === "amazon_pay" ? "amazon_pay" : "fake";
@@ -79,6 +84,9 @@ export async function createPaymentTransaction(amountPaise: number, scenario: Fa
       approvedAmountPaise: 0,
       status: "pending",
       scenario,
+      amazonAuthorizationId: context.amazonAuthorizationId ?? null,
+      sourceIp: context.sourceIp?.slice(0, 128) || null,
+      sourceUserAgent: context.sourceUserAgent?.slice(0, 512) || null,
       createdAt: now,
       updatedAt: now,
       providerResponse: {}

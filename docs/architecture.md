@@ -66,6 +66,8 @@ Public group responses include only sanitized line items, display names, claims,
 
 For web and installed PWA clients, Amazon consent is loaded only after the customer chooses **Continue with Amazon Pay**. The callback state binds the authorization to one owner or participant and one group. Access and refresh tokens are encrypted with AES-256-GCM using a deployment secret; they are never stored inside the public group document. A native Android or iOS client can use Amazon's mobile SDK and PKCE while keeping the same callback, token-vault, contribution, and charge boundaries.
 
+When a contribution is charged, its payment transaction records only that payer's opaque authorization ID plus the originating IP and user-agent fields Amazon requires for its signed Charge request. The adapter rejects an unlinked payer or missing request context before any provider call. The authorization ID is never accepted from the browser; it is resolved from the authenticated owner or private participant session.
+
 ## AWS target mapping
 
 | Local boundary | AWS production service |
