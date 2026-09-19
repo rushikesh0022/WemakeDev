@@ -7,17 +7,17 @@ applications:
           commands:
             - corepack enable
             - corepack prepare pnpm@9.15.4 --activate
-            - cd ../.. && pnpm install --frozen-lockfile
+            - pnpm install --frozen-lockfile
         build:
           commands:
             - env | grep -E '^(AUTH_PROVIDER|AUTH_SECRET|DATA_BACKEND|LLM_PROVIDER|BEDROCK_MODEL_ID|PAYMENT_PROVIDER|PICO_AWS_API_URL|PICO_DYNAMODB_TABLE|NEXT_PUBLIC_COGNITO_)=' >> apps/web/.env.production
-            - cd ../.. && pnpm --filter @zaply/web build
+            - pnpm --filter @zaply/web build
       artifacts:
-        baseDirectory: .next
+        baseDirectory: apps/web/.next
         files:
           - '**/*'
       cache:
         paths:
-          - ../../node_modules/**/*
-          - .next/cache/**/*
+          - node_modules/**/*
+          - apps/web/.next/cache/**/*
     buildPath: /
