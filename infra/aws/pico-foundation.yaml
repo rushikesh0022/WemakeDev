@@ -149,8 +149,8 @@ Resources:
                 Resource: !GetAtt PicoTable.Arn
               - Effect: Allow
                 Action:
-                  - ssm:GetParameter
-                Resource: !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/pico/${Stage}/*
+                  - bedrock:InvokeModel
+                Resource: !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}::foundation-model/amazon.nova-micro-v1:0
       Tags:
         - Key: Project
           Value: Pico

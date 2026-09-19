@@ -11,13 +11,13 @@ pnpm install
 pnpm dev
 ```
 
-Before starting, copy the environment template and add your server-side API key:
+Before starting, copy the environment template and configure a local or cloud model provider:
 
 ```bash
 cp apps/web/.env.example apps/web/.env.local
 ```
 
-Open [http://localhost:3000](http://localhost:3000). The top search returns normal catalog results first. Choose **Plan this basket** below autocomplete or below the results when the same text describes a recipe, occasion, or goal. The API key is never sent to the browser.
+Open [http://localhost:3000](http://localhost:3000). The top search returns normal catalog results first. Choose **Plan this basket** below autocomplete or below the results when the same text describes a recipe, occasion, or goal. Provider credentials are never sent to the browser. The AWS deployment supports Amazon Nova Micro through Bedrock, but Bedrock inference is left disabled in zero-cost mode because it is billed per token.
 
 For a fresh local checkout, sign in with `demo@zaply.app` and `ZaplyDemo123!`. This development-only account is created in memory when no local user database exists and is never seeded in production.
 
