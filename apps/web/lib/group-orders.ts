@@ -5,6 +5,7 @@ import { createOrder, updateOrderPayment, type AccountOrder } from "./auth";
 import { deriveGroupCollectionStatus } from "./group-state";
 import { calculateSettlementAmounts } from "./split-allocation";
 import { capturePayment, createPaymentTransaction } from "./payments";
+import { createAmazonLinkSession, type AmazonLinkTarget } from "./amazon-pay";
 import { readState, writeState } from "./state-store";
 
 export type GroupStatus = "draft" | "locked" | "collecting" | "ready" | "placed" | "cancelled" | "expired";
@@ -25,6 +26,7 @@ type GroupParticipant = {
   sessionHash: string;
   amazonLinked: boolean;
   amazonInstrument: string | null;
+  amazonAuthorizationId?: string | null;
   createdAt: string;
 };
 
@@ -51,6 +53,7 @@ export type GroupOrder = {
   finalTotalPaise: number;
   ownerPayablePaise: number;
   ownerAmazonLinked: boolean;
+  ownerAmazonAuthorizationId?: string | null;
   ownerContributionStatus: ContributionStatus;
   participants: GroupParticipant[];
   claims: GroupClaim[];
@@ -60,8 +63,8 @@ export type GroupOrder = {
   updatedAt: string;
 };
 
-export type OwnerGroupView = Omit<GroupOrder, "tokenHash" | "participants"> & {
-  participants: Array<Omit<GroupParticipant, "sessionHash"> & { payablePaise: number; paymentStatus: ContributionStatus | null }>;
+export type OwnerGroupView = Omit<GroupOrder, "tokenHash" | "participants" | "ownerAmazonAuthorizationId"> & {
+  participants: Array<Omit<GroupParticipant, "sessionHash" | "amazonAuthorizationId"> & { payablePaise: number; paymentStatus: ContributionStatus | null }>;
 };
 
 export type PublicGroupView = {
@@ -122,11 +125,11 @@ function participantFromSession(group: GroupOrder, cookieValue?: string | null) 
   return participant && secret && secureEqual(participant.sessionHash, digest(secret)) ? participant : null;
 }
 function ownerView(group: GroupOrder): OwnerGroupView {
-  const { tokenHash: _tokenHash, participants, ...safe } = group;
+  const { tokenHash: _tokenHash, participants, ownerAmazonAuthorizationId: _ownerAuthorization, ...safe } = group;
   return {
     ...safe,
     status: effectiveStatus(group),
-    participants: participants.map(({ sessionHash: _sessionHash, ...participant }) => ({
+    participants: participants.map(({ sessionHash: _sessionHash, amazonAuthorizationId: _authorization, ...participant }) => ({
       ...participant,
       payablePaise: group.contributions.find((item) => item.participantId === participant.id)?.amountPaise ?? 0,
       paymentStatus: group.contributions.find((item) => item.participantId === participant.id)?.status ?? null
@@ -188,7 +191,7 @@ export async function createGroup(input: { ownerId: string; ownerName: string; i
       expiresAt: new Date(now.getTime() + 7 * 86400000).toISOString(), version: 1, status: "draft",
       items: input.items, finalTotalPaise: input.items.reduce((sum, item) => sum + item.quantity * item.unitPricePaise, 0),
       ownerPayablePaise: input.items.reduce((sum, item) => sum + item.quantity * item.unitPricePaise, 0),
-      ownerAmazonLinked: false, ownerContributionStatus: "due", participants: [], claims: [], contributions: [],
+      ownerAmazonLinked: false, ownerAmazonAuthorizationId: null, ownerContributionStatus: "due", participants: [], claims: [], contributions: [],
       orderId: null, createdAt: now.toISOString(), updatedAt: now.toISOString()
     };
     await writeGroups([...groups, group]);
@@ -223,7 +226,7 @@ export async function joinGroup(token: string, displayNameInput: string) {
     if (effectiveStatus(group) !== "draft") throw new Error("This basket is no longer accepting people.");
     const displayName = displayNameInput.trim().slice(0, 40); if (displayName.length < 2) throw new Error("Enter your name.");
     const secret = randomBytes(24).toString("base64url");
-    const participant: GroupParticipant = { id: `person_${randomUUID().replaceAll("-", "")}`, displayName, sessionHash: digest(secret), amazonLinked: false, amazonInstrument: null, createdAt: new Date().toISOString() };
+    const participant: GroupParticipant = { id: `person_${randomUUID().replaceAll("-", "")}`, displayName, sessionHash: digest(secret), amazonLinked: false, amazonInstrument: null, amazonAuthorizationId: null, createdAt: new Date().toISOString() };
     group.participants.push(participant); group.version++; group.updatedAt = new Date().toISOString(); await writeGroups(groups);
     const cookieValue = `${participant.id}.${secret}`;
     return { group: publicView(group, cookieValue), cookieName: groupCookieName(group.id), cookieValue };
@@ -272,6 +275,22 @@ export async function linkParticipantAmazon(token: string, cookieValue?: string 
     return publicView(group, cookieValue);
   });
 }
+
+export async function beginParticipantAmazonLink(token: string, cookieValue?: string | null) {
+  if (process.env.PAYMENT_PROVIDER !== "amazon_pay") {
+    return { group: await linkParticipantAmazon(token, cookieValue), authorization: null };
+  }
+  const groups = await readGroups();
+  const group = resolveToken(groups, token);
+  if (!group) return null;
+  const participant = participantFromSession(group, cookieValue);
+  if (!participant) throw new Error("Your private session has expired.");
+  const authorization = await createAmazonLinkSession(
+    { kind: "participant", groupId: group.id, participantId: participant.id },
+    `/group/${encodeURIComponent(token)}`
+  );
+  return { group: publicView(group, cookieValue), authorization };
+}
 export async function payContribution(token: string, cookieValue: string | null | undefined, contributionId: string) {
   const prepared = await serialize(async () => {
     const groups = await readGroups(); const group = resolveToken(groups, token); if (!group) return null;
@@ -298,6 +317,42 @@ export async function linkOwnerAmazon(ownerId: string, groupId: string) {
   return serialize(async () => {
     const groups = await readGroups(); const group = groups.find((candidate) => candidate.id === groupId && candidate.ownerId === ownerId); if (!group) return null;
     group.ownerAmazonLinked = true; group.version++; group.updatedAt = new Date().toISOString(); await writeGroups(groups); return ownerView(group);
+  });
+}
+
+export async function beginOwnerAmazonLink(ownerId: string, groupId: string) {
+  if (process.env.PAYMENT_PROVIDER !== "amazon_pay") {
+    return { group: await linkOwnerAmazon(ownerId, groupId), authorization: null };
+  }
+  const group = (await readGroups()).find((candidate) => candidate.id === groupId && candidate.ownerId === ownerId);
+  if (!group) return null;
+  const authorization = await createAmazonLinkSession(
+    { kind: "owner", groupId, ownerId },
+    `/group/manage/${encodeURIComponent(groupId)}`
+  );
+  return { group: ownerView(group), authorization };
+}
+
+export async function completeGroupAmazonLink(target: AmazonLinkTarget, authorizationId: string) {
+  return serialize(async () => {
+    const groups = await readGroups();
+    const group = groups.find((candidate) => candidate.id === target.groupId);
+    if (!group) throw new Error("The shared basket no longer exists.");
+    if (target.kind === "owner") {
+      if (group.ownerId !== target.ownerId) throw new Error("Amazon Pay authorization does not match this basket owner.");
+      group.ownerAmazonLinked = true;
+      group.ownerAmazonAuthorizationId = authorizationId;
+    } else {
+      const participant = group.participants.find((candidate) => candidate.id === target.participantId);
+      if (!participant) throw new Error("Amazon Pay authorization does not match a basket participant.");
+      participant.amazonLinked = true;
+      participant.amazonInstrument = "Amazon Pay Balance";
+      participant.amazonAuthorizationId = authorizationId;
+    }
+    group.version++;
+    group.updatedAt = new Date().toISOString();
+    await writeGroups(groups);
+    return group;
   });
 }
 export async function placeGroupOrder(ownerId: string, groupId: string) {

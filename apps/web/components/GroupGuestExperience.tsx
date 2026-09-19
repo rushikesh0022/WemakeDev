@@ -3,6 +3,7 @@
 import { BadgeCheck, Minus, Plus, RefreshCw, ShieldCheck, ShoppingBag, Users, WalletCards } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import type { PublicGroupView } from "@/lib/group-orders";
+import { authorizeWithAmazonPay, type AmazonPayWebAuthorization } from "@/lib/amazon-pay-client";
 
 const money = (paise: number) => `₹${(paise / 100).toFixed(2)}`;
 
@@ -11,13 +12,20 @@ export function GroupGuestExperience({ token }: { token: string }) {
   const [claims, setClaims] = useState<Record<string, number>>({});
   const [busy, setBusy] = useState(""); const [error, setError] = useState(""); const [message, setMessage] = useState("");
   async function load() { const response = await fetch(`/api/group-orders/public/${encodeURIComponent(token)}`); const data = await response.json(); if (response.ok) setGroup(data.group); else setError(data.error); }
-  useEffect(() => { load(); }, [token]);
+  useEffect(() => {
+    load();
+    const url = new URL(window.location.href);
+    const amazonResult = url.searchParams.get("amazon");
+    if (amazonResult === "linked") setMessage("Amazon Pay account connected securely.");
+    if (amazonResult === "error") setError("Amazon Pay authorization was cancelled or could not be completed.");
+    if (amazonResult) { url.searchParams.delete("amazon"); window.history.replaceState({}, "", url); }
+  }, [token]);
   useEffect(() => { if (group?.me) setClaims(Object.fromEntries(group.me.claims.map((claim) => [claim.lineId, claim.quantity]))); }, [group?.version, group?.me?.id]);
   const subtotal = useMemo(() => group?.items.reduce((sum, item) => sum + (claims[item.lineId] ?? 0) * item.unitPricePaise, 0) ?? 0, [claims, group]);
   async function join(event: FormEvent<HTMLFormElement>) { event.preventDefault(); setBusy("join"); const displayName = String(new FormData(event.currentTarget).get("displayName") ?? ""); const response = await fetch(`/api/group-orders/public/${encodeURIComponent(token)}/participants`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ displayName }) }); const data = await response.json(); setBusy(""); if (response.ok) setGroup(data.group); else setError(data.error); }
   function change(item: PublicGroupView["items"][number], delta: number) { const mine = claims[item.lineId] ?? 0; const max = item.remaining + mine; setClaims((current) => ({ ...current, [item.lineId]: Math.max(0, Math.min(max, mine + delta)) })); }
   async function save() { if (!group) return; setBusy("save"); setError(""); const response = await fetch(`/api/group-orders/public/${encodeURIComponent(token)}/claims`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ version: group.version, claims: Object.entries(claims).map(([lineId, quantity]) => ({ lineId, quantity })) }) }); const data = await response.json(); setBusy(""); if (data.group) setGroup(data.group); if (response.ok) setMessage("Your choices are saved."); else setError(data.error); }
-  async function amazonAction(action: "link" | "pay") { const contribution = group?.me?.contribution; const path = action === "link" ? "amazon/link" : `contributions/${contribution?.id}/pay`; setBusy(action); setError(""); const response = await fetch(`/api/group-orders/public/${encodeURIComponent(token)}/${path}`, { method: "POST" }); const data = await response.json(); setBusy(""); if (response.ok) { setGroup(data.group); setMessage(action === "link" ? "Amazon Pay linked for this sandbox session." : "Your share is paid. The owner can place the order when everyone is ready."); } else setError(data.error); }
+  async function amazonAction(action: "link" | "pay") { const contribution = group?.me?.contribution; const path = action === "link" ? "amazon/link" : `contributions/${contribution?.id}/pay`; setBusy(action); setError(""); const response = await fetch(`/api/group-orders/public/${encodeURIComponent(token)}/${path}`, { method: "POST" }); const data = await response.json(); if (!response.ok) { setBusy(""); return setError(data.error); } if (data.authorization) { try { await authorizeWithAmazonPay(data.authorization as AmazonPayWebAuthorization); } catch (error) { setBusy(""); setError(error instanceof Error ? error.message : "Could not open Amazon Pay."); } return; } setBusy(""); setGroup(data.group); setMessage(action === "link" ? "Amazon Pay linked for this sandbox session." : "Your share is paid. The owner can place the order when everyone is ready."); }
 
   if (!group && !error) return <main className="group-page group-loading"><RefreshCw /><h1>Opening the basket…</h1></main>;
   if (!group) return <main className="group-page"><section className="group-empty"><h1>Basket unavailable</h1><p>{error}</p></section></main>;

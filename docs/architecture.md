@@ -37,7 +37,7 @@ The query-understanding response has no intent, mission, occasion, recipe, or im
 - Private seven-day group links store only a hash of the public secret. Guest participant secrets use HTTP-only cookies.
 - Optimistic group versions and serialized writes reject concurrent over-claims with `409 Conflict`.
 - Integer-paise proportional allocation uses largest-remainder rounding, with final reconciliation assigned to the owner.
-- Each participant links their own Amazon Pay account and authorizes a merchant charge for their portion. The delivery order is created after every contribution is approved.
+- Each participant links their own Amazon Pay account and authorizes a merchant charge for their portion. Real-provider linking uses the Amazon web SDK, a ten-minute one-time state, a server-side authorization-code exchange, and an encrypted token vault. Group records contain only an opaque authorization ID. The delivery order is created after every contribution is approved.
 - Development-only fulfilment controls exercise the confirmed, packing, out-for-delivery, and delivered states. Production transitions arrive from signed warehouse and rider events rather than customer controls.
 
 ## Shared Amazon Pay checkout flow
@@ -52,6 +52,9 @@ sequenceDiagram
   F->>P: Open signed link and choose quantities
   O->>P: Lock choices
   F->>A: Link account and authorize share
+  A-->>P: Authorization code
+  P->>A: Server token exchange
+  P->>P: Encrypt tokens; attach opaque authorization ID
   A-->>P: Verified charge status
   O->>A: Authorize remaining share
   A-->>P: Verified charge status
@@ -60,6 +63,8 @@ sequenceDiagram
 ```
 
 Public group responses include only sanitized line items, display names, claims, totals, link state, and the participant's own contribution. They never expose account contact details, delivery addresses, payment credentials, Amazon access tokens, or other participants' instruments.
+
+For web and installed PWA clients, Amazon consent is loaded only after the customer chooses **Continue with Amazon Pay**. The callback state binds the authorization to one owner or participant and one group. Access and refresh tokens are encrypted with AES-256-GCM using a deployment secret; they are never stored inside the public group document. A native Android or iOS client can use Amazon's mobile SDK and PKCE while keeping the same callback, token-vault, contribution, and charge boundaries.
 
 ## AWS target mapping
 

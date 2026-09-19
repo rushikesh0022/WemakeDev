@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useCart } from "@/lib/cart-context";
 import { copyText } from "@/lib/copy-text";
+import { authorizeWithAmazonPay, type AmazonPayWebAuthorization } from "@/lib/amazon-pay-client";
 import type { OwnerGroupView } from "@/lib/group-orders";
 
 const money = (paise: number) => `₹${(paise / 100).toFixed(2)}`;
@@ -19,6 +20,11 @@ export function GroupOwnerExperience({ initialGroup }: { initialGroup: OwnerGrou
   useEffect(() => {
     setToken(sessionStorage.getItem(`nesto-group-${initialGroup.id}`) ?? "");
     setTokenHydrated(true);
+    const url = new URL(window.location.href);
+    const amazonResult = url.searchParams.get("amazon");
+    if (amazonResult === "linked") setMessage("Amazon Pay account connected securely.");
+    if (amazonResult === "error") setMessage("Amazon Pay authorization was cancelled or could not be completed.");
+    if (amazonResult) { url.searchParams.delete("amazon"); window.history.replaceState({}, "", url); }
   }, [initialGroup.id]);
   const shareUrl = useMemo(() => token && typeof window !== "undefined" ? `${window.location.origin}/group/${token}` : "", [token]);
 
@@ -39,8 +45,14 @@ export function GroupOwnerExperience({ initialGroup }: { initialGroup: OwnerGrou
     setMessage(nativeShare ? "Your invite is ready." : "Private basket link copied.");
   }
   async function action(name: "lock" | "amazon/link" | "place") {
-    setBusy(name); setMessage(""); const response = await fetch(`/api/group-orders/${group.id}/${name}`, { method: "POST" }); const data = await response.json(); setBusy("");
-    if (!response.ok) return setMessage(data.error ?? "Could not update this order.");
+    setBusy(name); setMessage(""); const response = await fetch(`/api/group-orders/${group.id}/${name}`, { method: "POST" }); const data = await response.json();
+    if (!response.ok) { setBusy(""); return setMessage(data.error ?? "Could not update this order."); }
+    if (data.authorization) {
+      try { await authorizeWithAmazonPay(data.authorization as AmazonPayWebAuthorization); }
+      catch (error) { setBusy(""); setMessage(error instanceof Error ? error.message : "Could not open Amazon Pay."); }
+      return;
+    }
+    setBusy("");
     setGroup(data.group);
     if (name === "lock") setMessage("Choices are locked. Friends can now pay their shares.");
     if (name === "amazon/link") setMessage("Amazon Pay linked for this local sandbox session.");

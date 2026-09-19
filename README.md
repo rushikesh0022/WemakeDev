@@ -33,9 +33,9 @@ From the cart, the owner can choose **Share basket with friends**. Nesto creates
 
 The owner can then open the mobile-first tracking screen, which shows the confirmed, packing, on-the-way, and delivered stages, ETA, delivery address, and purchased line items. Development builds include a local fulfilment simulator for testing each stage; production expects these transitions from the order and delivery services.
 
-The local adapter simulates Amazon account linking and merchant charges. It does not transfer money between personal wallets. Amazon's documented merchant APIs support customer account linking, instrument lookup, merchant charges, status checks, and refunds; they do not expose a general consumer-wallet deposit API. A real sandbox connection still requires merchant onboarding, KYC, credentials, and safelisted callback/IPN URLs.
+The local adapter simulates Amazon account linking and merchant charges. It does not transfer money between personal wallets. With `PAYMENT_PROVIDER=amazon_pay`, the group flow now starts Amazon's web SDK consent, validates a one-time state value, exchanges the returned authorization code on the server, encrypts the access and refresh tokens, and links the resulting authorization reference to only that owner or participant. Amazon's documented merchant APIs support customer account linking, instrument lookup, merchant charges, status checks, and refunds; they do not expose a general consumer-wallet deposit API. A real sandbox connection still requires merchant onboarding, KYC, credentials, and safelisted callback/IPN URLs.
 
-`AmazonPayProvider` and the IPN route are deliberately unconfigured boundaries. Do not set `PAYMENT_PROVIDER=amazon_pay` until merchant onboarding, sandbox credentials, callback safelisting, signed-IPN verification, and status reconciliation are implemented.
+The OAuth callback is `/api/payments/amazon/callback`. Configure its full public URL as `AMAZON_PAY_REDIRECT_URI`, safelist it with Amazon, and provide a base64-encoded 32-byte `AMAZON_PAY_TOKEN_ENCRYPTION_KEY`. `AmazonPayProvider` and the IPN route remain guarded boundaries until the sandbox Charge, Instruments, Status, and signed-IPN credentials are available. Do not enable real charges before those checks pass.
 
 To use Ollama instead, set `LLM_PROVIDER=ollama` in `apps/web/.env.local` and run the configured local model.
 
