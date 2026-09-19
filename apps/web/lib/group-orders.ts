@@ -218,6 +218,7 @@ export async function rotateGroupLink(ownerId: string, groupId: string) {
   return serialize(async () => {
     const groups = await readGroups(); const group = groups.find((candidate) => candidate.id === groupId && candidate.ownerId === ownerId);
     if (!group) return null;
+    if (["placed", "cancelled", "expired"].includes(effectiveStatus(group))) throw new Error("This basket is closed and its invite cannot be replaced.");
     const access = createToken(groupId); group.tokenHash = access.tokenHash; group.version++; group.updatedAt = new Date().toISOString();
     await writeGroups(groups); return { group: ownerView(group), publicToken: access.token };
   });

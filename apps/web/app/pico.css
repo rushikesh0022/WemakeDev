@@ -255,6 +255,13 @@ body { background: var(--pico-cream); color: var(--pico-ink); }
 .tracking-steps article.is-complete { color: #1c1a1a; }
 .tracking-steps article.is-complete>div { border-color: #ffd8ce; color: white; background: var(--pico-coral); box-shadow: 0 7px 16px rgba(240,79,61,.19); }
 .tracking-steps article.is-complete>i { background: #ef8375; }
+.tracking-simulator { margin: 0 22px 20px; padding: 14px; border: 1px dashed #e7d9d0; border-radius: 14px; background: #fffaf6; }
+.tracking-simulator>span { color: #9e8b81; font-size: 8px; font-weight: 850; letter-spacing: 1.2px; }
+.tracking-simulator>div { display: grid; grid-template-columns: repeat(4,1fr); gap: 6px; margin-top: 9px; }
+.tracking-simulator button { min-height: 34px; padding: 5px; border: 1px solid #eaded6; border-radius: 9px; color: #6f625c; background: white; font-size: 8px; font-weight: 800; }
+.tracking-simulator button.active { border-color: var(--pico-coral); color: white; background: var(--pico-coral); }
+.tracking-simulator button:disabled { opacity: .55; }
+.tracking-simulator p { margin: 8px 0 0; color: #b3342b; font-size: 9px; }
 .tracking-side { display: grid; gap: 12px; }
 .tracking-address { display: grid; grid-template-columns: 42px 1fr; gap: 12px; padding: 19px; }
 .tracking-address>svg { width: 42px; height: 42px; padding: 11px; border-radius: 14px; color: #a9372c; background: #ffe8e0; }

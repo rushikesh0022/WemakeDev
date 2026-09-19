@@ -31,7 +31,7 @@ The local checkout uses `PAYMENT_PROVIDER=fake`. In development, its selector ca
 
 From the cart, the owner can choose **Shop & pay with friends**. Pico creates a seven-day private basket. Friends open the link without an account, choose whole product quantities, link Amazon Pay, and pay Pico for their portion. Once all friend contributions are approved, the owner links Amazon Pay, pays the remaining portion, and places one delivery order.
 
-The owner can then open the mobile-first tracking screen, which shows the confirmed, packing, on-the-way, and delivered stages, ETA, delivery address, and purchased line items.
+The owner can then open the mobile-first tracking screen, which shows the confirmed, packing, on-the-way, and delivered stages, ETA, delivery address, and purchased line items. Development builds include a local fulfilment simulator for testing each stage; production expects these transitions from the order and delivery services.
 
 The local adapter simulates Amazon account linking and merchant charges. It does not transfer money between personal wallets. Amazon's documented merchant APIs support customer account linking, instrument lookup, merchant charges, status checks, and refunds; a real sandbox connection still requires merchant onboarding and credentials.
 

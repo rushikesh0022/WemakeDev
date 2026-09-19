@@ -20,6 +20,7 @@ export function CartExperience() {
     if (response.status === 401) return router.push("/account");
     if (!response.ok) return setGroupError(data.error ?? "Could not start a group order.");
     sessionStorage.setItem(`pico-group-${data.group.id}`, data.publicToken);
+    sessionStorage.setItem("pico-active-group-id", data.group.id);
     router.push(`/group/manage/${data.group.id}`);
   }
   if (!items.length) return (

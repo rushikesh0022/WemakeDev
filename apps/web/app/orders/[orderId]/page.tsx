@@ -8,5 +8,5 @@ export default async function OrderPage({ params }: { params: Promise<{ orderId:
   const order = await getOrder(user.id, (await params).orderId);
   if (!order) notFound();
   if (!user.address) redirect("/account");
-  return <OrderTrackingExperience order={order} address={user.address} />;
+  return <OrderTrackingExperience order={order} address={user.address} allowFulfillmentSimulation={process.env.NODE_ENV !== "production"} />;
 }

@@ -226,6 +226,20 @@ export async function updateOrderPayment(userId: string, orderId: string, paymen
   return order;
 }
 
+export async function updateOrderFulfillment(userId: string, orderId: string, fulfillmentStatus: AccountOrder["fulfillmentStatus"]) {
+  const users = await readUsers();
+  const userIndex = users.findIndex((user) => user.id === userId);
+  if (userIndex < 0) return null;
+  const orderIndex = users[userIndex].orders.findIndex((order) => order.id === orderId);
+  if (orderIndex < 0) return null;
+  const order = normalizeOrder(users[userIndex].orders[orderIndex]);
+  if (order.status !== "paid") throw new Error("Only paid orders can enter fulfilment.");
+  order.fulfillmentStatus = fulfillmentStatus;
+  users[userIndex].orders[orderIndex] = order;
+  await writeUsers(users);
+  return order;
+}
+
 function authSecret() {
   if (process.env.AUTH_SECRET) return process.env.AUTH_SECRET;
   if (process.env.NODE_ENV === "production") throw new Error("AUTH_SECRET is required in production.");

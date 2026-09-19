@@ -3,17 +3,23 @@
 import { BadgeCheck, Check, Copy, LockKeyhole, PackageCheck, RefreshCw, Share2, Users, WalletCards } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { useCart } from "@/lib/cart-context";
 import { copyText } from "@/lib/copy-text";
 import type { OwnerGroupView } from "@/lib/group-orders";
 
 const money = (paise: number) => `₹${(paise / 100).toFixed(2)}`;
 
 export function GroupOwnerExperience({ initialGroup }: { initialGroup: OwnerGroupView }) {
+  const { clear } = useCart();
   const [group, setGroup] = useState(initialGroup);
   const [token, setToken] = useState("");
+  const [tokenHydrated, setTokenHydrated] = useState(false);
   const [busy, setBusy] = useState("");
   const [message, setMessage] = useState("");
-  useEffect(() => setToken(sessionStorage.getItem(`pico-group-${initialGroup.id}`) ?? ""), [initialGroup.id]);
+  useEffect(() => {
+    setToken(sessionStorage.getItem(`pico-group-${initialGroup.id}`) ?? "");
+    setTokenHydrated(true);
+  }, [initialGroup.id]);
   const shareUrl = useMemo(() => token && typeof window !== "undefined" ? `${window.location.origin}/group/${token}` : "", [token]);
 
   async function refresh() {
@@ -38,6 +44,10 @@ export function GroupOwnerExperience({ initialGroup }: { initialGroup: OwnerGrou
     setGroup(data.group);
     if (name === "lock") setMessage("Choices are locked. Friends can now pay their shares.");
     if (name === "amazon/link") setMessage("Amazon Pay linked for this local sandbox session.");
+    if (name === "place" && sessionStorage.getItem("pico-active-group-id") === group.id) {
+      clear();
+      sessionStorage.removeItem("pico-active-group-id");
+    }
   }
 
   const claimed = group.claims.reduce((sum, item) => sum + item.quantity, 0);
@@ -52,7 +62,7 @@ export function GroupOwnerExperience({ initialGroup }: { initialGroup: OwnerGrou
         <div className="group-item-list">{group.items.map((item) => { const claims = group.claims.filter((claim) => claim.lineId === item.lineId); const taken = claims.reduce((sum, claim) => sum + claim.quantity, 0); return <article key={item.lineId}><img src={item.image} alt="" /><div><strong>{item.name}</strong><small>{item.quantity} × {money(item.unitPricePaise)}</small></div><div className="group-tags">{claims.map((claim) => <span key={claim.participantId}>{group.participants.find((person) => person.id === claim.participantId)?.displayName} × {claim.quantity}</span>)}{taken < item.quantity && <span className="group-owner-tag">You × {item.quantity - taken}</span>}</div></article>; })}</div>
       </section>
 
-      <aside className="group-control page-enter"><div className="group-control__icon"><Share2 /></div><span>PRIVATE INVITE</span><h2>Bring your people in</h2><p>Each person can open the link, choose products, and link their own Amazon Pay account.</p><button className="group-primary" onClick={() => createLink(Boolean(token))} disabled={busy === "share"}>{token ? <Copy /> : <Share2 />}{token ? "Copy invite" : "Create invite"}</button>{token && <button className="group-secondary" onClick={() => createLink(false)}>Replace link</button>}
+      <aside className="group-control page-enter"><div className="group-control__icon">{group.status === "placed" ? <PackageCheck /> : <Share2 />}</div><span>{group.status === "placed" ? "DELIVERY CREATED" : "PRIVATE INVITE"}</span><h2>{group.status === "placed" ? "Everyone is paid" : "Bring your people in"}</h2><p>{group.status === "placed" ? "This basket is closed and the store has received one delivery order." : "Each person can open the link, choose products, and link their own Amazon Pay account."}</p>{group.status !== "placed" && <><button className="group-primary" onClick={() => createLink(Boolean(token))} disabled={!tokenHydrated || busy === "share"}>{!tokenHydrated ? <RefreshCw /> : token ? <Copy /> : <Share2 />}{!tokenHydrated ? "Loading invite…" : token ? "Copy invite" : "Create invite"}</button>{tokenHydrated && token && <button className="group-secondary" onClick={() => createLink(false)}>Replace link</button>}</>}
         {group.status === "draft" && <button className="group-lock" onClick={() => action("lock")} disabled={busy === "lock"}><LockKeyhole />{busy === "lock" ? "Locking…" : "Lock choices"}</button>}
         {group.status === "ready" && group.ownerPayablePaise > 0 && !group.ownerAmazonLinked && <button className="amazon-button" onClick={() => action("amazon/link")} disabled={busy === "amazon/link"}><WalletCards />Link Amazon Pay</button>}
         {group.status === "ready" && (group.ownerAmazonLinked || group.ownerPayablePaise === 0) && <button className="amazon-button amazon-button--pay" onClick={() => action("place")} disabled={busy === "place"}><Check />{busy === "place" ? "Placing order…" : group.ownerPayablePaise > 0 ? `Pay ${money(group.ownerPayablePaise)} & place order` : "Place group order"}</button>}

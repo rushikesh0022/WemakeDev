@@ -38,6 +38,7 @@ The query-understanding response has no intent, mission, occasion, recipe, or im
 - Optimistic group versions and serialized writes reject concurrent over-claims with `409 Conflict`.
 - Integer-paise proportional allocation uses largest-remainder rounding, with final reconciliation assigned to the owner.
 - Each participant links their own Amazon Pay account and authorizes a merchant charge for their portion. The delivery order is created after every contribution is approved.
+- Development-only fulfilment controls exercise the confirmed, packing, out-for-delivery, and delivered states. Production transitions arrive from signed warehouse and rider events rather than customer controls.
 
 ## Shared Amazon Pay checkout flow
 
