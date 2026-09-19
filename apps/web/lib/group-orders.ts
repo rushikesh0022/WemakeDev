@@ -174,7 +174,7 @@ function updateCollectionStatus(group: GroupOrder) {
   group.status = deriveGroupCollectionStatus(group.contributions);
 }
 
-export function groupCookieName(id: string) { return `pico_group_${id}`; }
+export function groupCookieName(id: string) { return `nesto_group_${id}`; }
 
 export async function createGroup(input: { ownerId: string; ownerName: string; items: GroupItem[] }) {
   if (!input.items.length) throw new Error("Add items before starting a group order.");

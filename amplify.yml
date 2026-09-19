@@ -11,7 +11,7 @@ applications:
         build:
           commands:
             - env | grep -E '^(AUTH_PROVIDER|AUTH_SECRET|DATA_BACKEND|LLM_PROVIDER|BEDROCK_MODEL_ID|PAYMENT_PROVIDER|PICO_AWS_API_URL|PICO_DYNAMODB_TABLE|NEXT_PUBLIC_COGNITO_)=' >> apps/web/.env.production
-            - pnpm --filter @zaply/web build
+            - pnpm --filter @nesto/web build
       artifacts:
         baseDirectory: apps/web/.next
         files:

@@ -1,13 +1,13 @@
 {
-  "name": "zaply",
+  "name": "nesto",
   "version": "1.0.0",
   "private": true,
   "packageManager": "pnpm@9.15.4",
   "scripts": {
-    "dev": "pnpm --filter @zaply/web dev",
-    "build": "pnpm --filter @zaply/web build",
-    "lint": "pnpm --filter @zaply/web lint",
-    "test": "pnpm --filter @zaply/web test",
+    "dev": "pnpm --filter @nesto/web dev",
+    "build": "pnpm --filter @nesto/web build",
+    "lint": "pnpm --filter @nesto/web lint",
+    "test": "pnpm --filter @nesto/web test",
     "aws:validate": "aws cloudformation validate-template --template-body file://infra/aws/pico-foundation.yaml --region us-east-1"
   }
 }

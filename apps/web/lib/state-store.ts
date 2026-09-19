@@ -30,11 +30,18 @@ export async function readState<T>(key: string, fallback: () => T): Promise<T> {
     return result.Item?.value === undefined ? fallback() : result.Item.value as T;
   }
 
-  const filename = path.join(process.cwd(), ".zaply-data", `${key}.json`);
+  const filename = path.join(process.cwd(), ".nesto-data", `${key}.json`);
   try {
     return JSON.parse(await readFile(filename, "utf8")) as T;
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return fallback();
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      const legacy = path.join(process.cwd(), ".zaply-data", `${key}.json`);
+      try { return JSON.parse(await readFile(legacy, "utf8")) as T; }
+      catch (legacyError) {
+        if ((legacyError as NodeJS.ErrnoException).code === "ENOENT") return fallback();
+        throw legacyError;
+      }
+    }
     throw error;
   }
 }
@@ -53,7 +60,7 @@ export async function writeState<T>(key: string, value: T) {
     return;
   }
 
-  const directory = path.join(process.cwd(), ".zaply-data");
+  const directory = path.join(process.cwd(), ".nesto-data");
   const filename = path.join(directory, `${key}.json`);
   await mkdir(directory, { recursive: true });
   const temporary = `${filename}.${randomUUID()}.tmp`;

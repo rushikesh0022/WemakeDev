@@ -22,7 +22,7 @@ export function LocationPicker() {
 
   useEffect(() => {
     try {
-      const saved = window.localStorage.getItem("zaply-delivery-location");
+      const saved = window.localStorage.getItem("nesto-delivery-location") || window.localStorage.getItem("zaply-delivery-location");
       if (saved) setLocation(JSON.parse(saved));
     } catch { /* Ignore invalid local data. */ }
     fetch("/api/auth/session").then((response) => response.json()).then(({ address }) => {
@@ -33,7 +33,7 @@ export function LocationPicker() {
 
   function save(next: SavedLocation) {
     setLocation(next);
-    window.localStorage.setItem("zaply-delivery-location", JSON.stringify(next));
+    window.localStorage.setItem("nesto-delivery-location", JSON.stringify(next));
     setError("");
     setOpen(false);
   }

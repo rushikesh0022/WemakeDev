@@ -16,20 +16,7 @@ const schema = {
 
 const catalogVocabulary = [...new Set(products.flatMap((product)=>[product.name,product.category,product.subcategory,...(product.dietary??[])]))].join("; ");
 
-function parseOutput(data: any): OpenPlan {
-  const text=data.output_text ?? data.output?.flatMap((item:any)=>item.content??[]).find((item:any)=>item.type==="output_text")?.text;
-  if(!text) throw new Error("The model returned no structured output");
-  return JSON.parse(text);
-}
-
 const bedrock = new BedrockRuntimeClient({ region: process.env.AWS_REGION || "us-east-1" });
-
-async function openAIPlan(query:string):Promise<OpenPlan>{
-  const response=await fetch(process.env.OPENAI_BASE_URL??"https://api.openai.com/v1/responses",{method:"POST",headers:{"content-type":"application/json","authorization":`Bearer ${process.env.OPENAI_API_KEY}`},body:JSON.stringify({model:process.env.OPENAI_MODEL??"gpt-5-mini",store:false,max_output_tokens:850,prompt_cache_key:"nowly-query-understanding-v2",instructions:`You are the query-understanding layer for an Indian quick-commerce retrieval system. Produce free-form requirements; never classify the request into a predefined intent, mission, occasion, or importance label. Express importance only as a continuous priority from 0 to 1. For every requirement, generate short retrievalQueries using words found in the catalog vocabulary when appropriate. Preserve explicit constraints and infer conservatively. Prices and stock are resolved later; never invent them. For recipes, include short steps. Catalog vocabulary: ${catalogVocabulary}`,input:query,text:{format:{type:"json_schema",name:"shopping_requirements",strict:true,schema}}})});
-  const data=await response.json();
-  if(!response.ok) throw new Error(data?.error?.message??`Model request failed (${response.status})`);
-  return parseOutput(data);
-}
 
 async function bedrockPlan(query:string):Promise<OpenPlan>{
   const response=await bedrock.send(new ConverseCommand({
@@ -54,15 +41,15 @@ export async function POST(request:Request){
     const body=await request.json(); const query=String(body.query??"").trim(); const historyIds=Array.isArray(body.historyIds)?body.historyIds.map(String).slice(0,30):[];
     if(!query) return NextResponse.json({error:"Query is required"},{status:400});
     const configuredProvider=process.env.LLM_PROVIDER?.toLowerCase();
-    const provider=configuredProvider??(process.env.OPENAI_API_KEY?"openai":"");
+    const provider=configuredProvider??"";
     if(!provider) throw new Error("No language model is configured");
-    if(provider!=="openai"&&provider!=="bedrock"&&provider!=="ollama") throw new Error(`Unsupported language model provider: ${provider}`);
-    const plan=provider==="openai"?await openAIPlan(query):provider==="bedrock"?await bedrockPlan(query):await ollamaPlan(query);
+    if(provider!=="bedrock"&&provider!=="ollama") throw new Error(`Unsupported language model provider: ${provider}`);
+    const plan=provider==="bedrock"?await bedrockPlan(query):await ollamaPlan(query);
     const suggestion=groundPlan(plan,historyIds);
     if(!suggestion.needs.length) return NextResponse.json({kind:"clarification",title:"We need one more detail",choices:[`A specific product for ${query}`,`Ingredients related to ${query}`,`A complete plan for ${query}`],route:"catalog_gap"});
     return NextResponse.json({kind:"suggestion",suggestion,route:`dynamic_${provider}`});
   }catch(error){
     const message=error instanceof Error?error.message:"Recommendation failed";
-    return NextResponse.json({error:message,hint:"Configure an API provider in apps/web/.env.local, or run Ollama locally."},{status:503});
+    return NextResponse.json({error:message,hint:"Enable Amazon Bedrock for AWS inference, or run Ollama locally for zero-cost development."},{status:503});
   }
 }

@@ -33,7 +33,7 @@ export async function GET(request: Request) {
     target.searchParams.set("accept-language", "en");
     const response = await fetch(target, {
       headers: {
-        "User-Agent": "Pico/1.0 (+https://github.com/rushikesh0022/WemakeDev)",
+        "User-Agent": "Nesto/1.0 (+https://github.com/rushikesh0022/WemakeDev)",
         "Accept-Language": "en"
       },
       signal: AbortSignal.timeout(8000)

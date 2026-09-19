@@ -20,7 +20,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    const saved = window.localStorage.getItem("nowly-cart") || window.localStorage.getItem("local-basket-cart");
+    const saved = window.localStorage.getItem("nesto-cart") || window.localStorage.getItem("nowly-cart") || window.localStorage.getItem("local-basket-cart");
     if (saved) {
       try { setItems(JSON.parse(saved)); } catch { /* ignore invalid local demo state */ }
     }
@@ -28,7 +28,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (hydrated) window.localStorage.setItem("nowly-cart", JSON.stringify(items));
+    if (hydrated) window.localStorage.setItem("nesto-cart", JSON.stringify(items));
   }, [items, hydrated]);
 
   const value = useMemo<CartContextValue>(() => ({

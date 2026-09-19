@@ -1,4 +1,4 @@
-# Pico architecture
+# Nesto architecture
 
 ## Request flow
 
@@ -29,7 +29,7 @@ The query-understanding response has no intent, mission, occasion, recipe, or im
 - Local TypeScript catalog with fictional inventory and prices plus all 81 GroceryStoreDataset classes.
 - Browser-local cart and recent-item affinity.
 - Local file-backed customer accounts with salted password hashes, signed HTTP-only sessions, persisted addresses and order history.
-- OpenAI Responses API with strict JSON schema, or Ollama with the same schema.
+- Amazon Bedrock with the same open-ended JSON contract, or Ollama for zero-cost local inference.
 - Normal product queries never call the model; the user explicitly promotes the same query to AI planning.
 - Customer-triggered browser geolocation with a server-side reverse-geocoding boundary, a manual fallback, and account-address reuse. Only the resolved delivery label is retained in browser storage.
 - File-backed payment, order, group-basket, claim, participant, and contribution repositories behind server-only modules.
@@ -45,7 +45,7 @@ The query-understanding response has no intent, mission, occasion, recipe, or im
 ```mermaid
 sequenceDiagram
   participant O as Order owner
-  participant P as Pico
+  participant P as Nesto
   participant F as Friend
   participant A as Amazon Pay
   O->>P: Create group basket from cart

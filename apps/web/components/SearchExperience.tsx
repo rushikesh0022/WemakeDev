@@ -45,7 +45,7 @@ export function SearchExperience() {
 
   return (
     <div className="search-page">
-      {!result && !loading && <div className="search-empty"><div>⌕</div><h1>Start with the search above</h1><p>Find products normally, then ask Pico to turn the same query into a complete basket.</p></div>}
+      {!result && !loading && <div className="search-empty"><div>⌕</div><h1>What do you need today?</h1><p>Search for a product, or describe the outcome and let Nesto build an editable basket.</p></div>}
       {loading && <section className="planner-loading"><div className="planner-loading__pulse" /><span>UNDERSTANDING YOUR REQUEST</span><h1>Building a grounded plan…</h1><p>The planner is finding needs first, then matching only products in this store.</p></section>}
       {error && <div className="planner-notice"><strong>AI planner is not connected yet.</strong><span>{error}</span></div>}
       {result?.kind === "suggestion" && <SuggestionExperience suggestion={result.suggestion} />}

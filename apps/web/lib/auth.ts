@@ -5,7 +5,7 @@ import { CognitoIdentityProviderClient, ConfirmSignUpCommand, InitiateAuthComman
 import { cookies } from "next/headers";
 import { readState, writeState } from "./state-store";
 
-export const SESSION_COOKIE = "pico_session";
+export const SESSION_COOKIE = "nesto_session";
 
 export type Address = {
   label: string;
@@ -59,14 +59,14 @@ function cognitoClientId() {
 }
 
 function developmentDemoUser(): StoredUser {
-  const passwordSalt = "pico-demo-account-v1";
+  const passwordSalt = "nesto-demo-account-v1";
   return {
-    id: "usr_pico_demo",
-    name: "Pico Demo User",
-    email: "demo@zaply.app",
+    id: "usr_nesto_demo",
+    name: "Nesto Demo User",
+    email: "demo@nesto.app",
     phone: "",
     passwordSalt,
-    passwordHash: hashPassword("ZaplyDemo123!", passwordSalt),
+    passwordHash: hashPassword("NestoDemo123!", passwordSalt),
     role: "customer",
     createdAt: "2026-01-01T00:00:00.000Z",
     address: null,
@@ -114,7 +114,10 @@ function normalizeOrder(order: AccountOrder | Record<string, unknown>): AccountO
 }
 
 async function readUsers(): Promise<StoredUser[]> {
-  return readState("users", () => process.env.NODE_ENV === "production" ? [] : [developmentDemoUser()]);
+  const users = await readState<StoredUser[]>("users", () => []);
+  if (process.env.NODE_ENV === "production") return users;
+  const demo = developmentDemoUser();
+  return users.some((user) => user.email === demo.email) ? users : [...users, demo];
 }
 
 async function writeUsers(users: StoredUser[]) {
@@ -286,7 +289,7 @@ export async function updateOrderFulfillment(userId: string, orderId: string, fu
 function authSecret() {
   if (process.env.AUTH_SECRET) return process.env.AUTH_SECRET;
   if (process.env.NODE_ENV === "production") throw new Error("AUTH_SECRET is required in production.");
-  return "pico-local-development-secret-change-before-deploying";
+  return "nesto-local-development-secret-change-before-deploying";
 }
 
 export function createSessionToken(user: PublicUser) {

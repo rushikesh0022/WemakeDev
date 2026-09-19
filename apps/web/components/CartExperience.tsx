@@ -19,8 +19,8 @@ export function CartExperience() {
     const data = await response.json(); setGroupBusy(false);
     if (response.status === 401) return router.push("/account");
     if (!response.ok) return setGroupError(data.error ?? "Could not start a group order.");
-    sessionStorage.setItem(`pico-group-${data.group.id}`, data.publicToken);
-    sessionStorage.setItem("pico-active-group-id", data.group.id);
+    sessionStorage.setItem(`nesto-group-${data.group.id}`, data.publicToken);
+    sessionStorage.setItem("nesto-active-group-id", data.group.id);
     router.push(`/group/manage/${data.group.id}`);
   }
   if (!items.length) return (
@@ -53,10 +53,11 @@ export function CartExperience() {
         <aside className="order-card">
           <span>ORDER SUMMARY</span><h2>₹{total}</h2>
           <div><p><span>Item total</span><b>₹{total}</b></p><p><span>Handling</span><b>₹0</b></p><p><span>Demo delivery</span><b className="success">FREE</b></p></div>
-          <Link className="primary-button" href="/checkout">Checkout myself</Link>
-          <button className="group-cart-button" onClick={startGroupOrder} disabled={groupBusy}><Users />{groupBusy ? "Starting basket…" : "Shop & pay with friends"}</button>
+          <Link className="primary-button" href="/checkout">Place my order</Link>
+          <div className="share-order-intro"><span><Users /></span><div><strong>Ordering with friends?</strong><small>Send this exact basket. Everyone claims products and pays their own share.</small></div></div>
+          <button className="group-cart-button" onClick={startGroupOrder} disabled={groupBusy}><Users />{groupBusy ? "Preparing private link…" : "Share basket with friends"}</button>
           {groupError && <p className="form-error">{groupError}</p>}
-          <small><ShieldCheck size={14} /> Every person pays Pico directly through Amazon Pay.</small>
+          <small><ShieldCheck size={14} /> One delivery. Separate verified Amazon Pay merchant charges.</small>
         </aside>
       </div>
     </div>
