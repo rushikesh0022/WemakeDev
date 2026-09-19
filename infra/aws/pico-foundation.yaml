@@ -96,6 +96,7 @@ Resources:
         RefreshToken: days
       ExplicitAuthFlows:
         - ALLOW_USER_SRP_AUTH
+        - ALLOW_USER_PASSWORD_AUTH
         - ALLOW_REFRESH_TOKEN_AUTH
 
   PicoQueue:
@@ -114,6 +115,42 @@ Resources:
     Type: AWS::Events::EventBus
     Properties:
       Name: !Sub pico-${Stage}
+      Tags:
+        - Key: Project
+          Value: Pico
+        - Key: Environment
+          Value: !Ref Stage
+
+  PicoAmplifyComputeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub pico-amplify-compute-${Stage}
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: amplify.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: PicoStateTable
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:Query
+                  - dynamodb:TransactWriteItems
+                  - dynamodb:DescribeTable
+                Resource: !GetAtt PicoTable.Arn
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                Resource: !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/pico/${Stage}/*
       Tags:
         - Key: Project
           Value: Pico
@@ -176,3 +213,6 @@ Outputs:
     Value: !Ref PicoEventBus
   QueueUrl:
     Value: !Ref PicoQueue
+  AmplifyComputeRoleArn:
+    Description: Least-privilege role for the hosted Next.js server runtime.
+    Value: !GetAtt PicoAmplifyComputeRole.Arn

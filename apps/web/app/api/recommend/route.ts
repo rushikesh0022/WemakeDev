@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { groundPlan, type OpenPlan } from "@/lib/ranking";
 import { products } from "@/lib/catalog";
+import { runtimeSecret } from "@/lib/runtime-secrets";
 
 export const runtime = "nodejs";
 
@@ -35,7 +36,8 @@ async function openAIPlan(query:string):Promise<OpenPlan>{
 }
 
 async function openRouterPlan(query:string):Promise<OpenPlan>{
-  const response=await fetch("https://openrouter.ai/api/v1/chat/completions",{method:"POST",headers:{"content-type":"application/json","authorization":`Bearer ${process.env.OPENROUTER_API_KEY}`,"HTTP-Referer":process.env.OPENROUTER_SITE_URL??"http://localhost:3000","X-Title":"Pico"},body:JSON.stringify({model:process.env.OPENROUTER_MODEL??"stealth/union-alpha",temperature:0,max_tokens:850,messages:[{role:"system",content:`You are the query-understanding layer for an Indian quick-commerce retrieval system. Return only one JSON object matching this schema: ${JSON.stringify(schema)}. Produce free-form requirements; never classify the request into a predefined intent, mission, occasion, or importance label. Express importance only as a continuous priority from 0 to 1. For every requirement, generate short retrievalQueries using words found in the catalog vocabulary when appropriate. Preserve explicit constraints and infer conservatively. Prices and stock are resolved later; never invent them. For recipes, include short steps. Catalog vocabulary: ${catalogVocabulary}`},{role:"user",content:query}],response_format:{type:"json_object"}})});
+  const apiKey=await runtimeSecret("OPENROUTER_API_KEY","OPENROUTER_API_KEY_PARAMETER");
+  const response=await fetch("https://openrouter.ai/api/v1/chat/completions",{method:"POST",headers:{"content-type":"application/json","authorization":`Bearer ${apiKey}`,"HTTP-Referer":process.env.OPENROUTER_SITE_URL??"http://localhost:3000","X-Title":"Pico"},body:JSON.stringify({model:process.env.OPENROUTER_MODEL??"stealth/union-alpha",temperature:0,max_tokens:850,messages:[{role:"system",content:`You are the query-understanding layer for an Indian quick-commerce retrieval system. Return only one JSON object matching this schema: ${JSON.stringify(schema)}. Produce free-form requirements; never classify the request into a predefined intent, mission, occasion, or importance label. Express importance only as a continuous priority from 0 to 1. For every requirement, generate short retrievalQueries using words found in the catalog vocabulary when appropriate. Preserve explicit constraints and infer conservatively. Prices and stock are resolved later; never invent them. For recipes, include short steps. Catalog vocabulary: ${catalogVocabulary}`},{role:"user",content:query}],response_format:{type:"json_object"}})});
   const data=await response.json();
   if(!response.ok) throw new Error(data?.error?.message??`OpenRouter request failed (${response.status})`);
   return parseChatOutput(data);

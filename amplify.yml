@@ -1,0 +1,23 @@
+version: 1
+applications:
+  - appRoot: apps/web
+    frontend:
+      phases:
+        preBuild:
+          commands:
+            - corepack enable
+            - corepack prepare pnpm@9.15.4 --activate
+            - cd ../.. && pnpm install --frozen-lockfile
+        build:
+          commands:
+            - env | grep -E '^(AUTH_PROVIDER|AUTH_SECRET|DATA_BACKEND|LLM_PROVIDER|OPENROUTER_API_KEY_PARAMETER|OPENROUTER_MODEL|OPENROUTER_SITE_URL|PAYMENT_PROVIDER|PICO_AWS_API_URL|PICO_DYNAMODB_TABLE|NEXT_PUBLIC_COGNITO_)=' >> apps/web/.env.production
+            - cd ../.. && pnpm --filter @zaply/web build
+      artifacts:
+        baseDirectory: .next
+        files:
+          - '**/*'
+      cache:
+        paths:
+          - ../../node_modules/**/*
+          - .next/cache/**/*
+    buildPath: /

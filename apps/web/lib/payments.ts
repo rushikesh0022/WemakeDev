@@ -1,8 +1,7 @@
 import "server-only";
 
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
-import path from "node:path";
+import { readState, writeState } from "./state-store";
 
 export type PaymentStatus = "pending" | "approved" | "declined" | "timed_out" | "refunded";
 export type FakePaymentScenario = "success" | "pending" | "decline" | "timeout";
@@ -51,24 +50,14 @@ export class AmazonPayProvider implements PaymentProvider {
   }
 }
 
-const dataDirectory = path.join(process.cwd(), ".zaply-data");
-const paymentsFile = path.join(dataDirectory, "payments.json");
 let writeQueue = Promise.resolve();
 
 async function readTransactions(): Promise<PaymentTransaction[]> {
-  try {
-    return JSON.parse(await readFile(paymentsFile, "utf8"));
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
-    throw error;
-  }
+  return readState("payments", () => []);
 }
 
 async function writeTransactions(transactions: PaymentTransaction[]) {
-  await mkdir(dataDirectory, { recursive: true });
-  const temporary = `${paymentsFile}.${randomUUID()}.tmp`;
-  await writeFile(temporary, JSON.stringify(transactions, null, 2), { mode: 0o600 });
-  await rename(temporary, paymentsFile);
+  await writeState("payments", transactions);
 }
 
 function serialize<T>(operation: () => Promise<T>) {

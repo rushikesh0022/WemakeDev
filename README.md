@@ -56,6 +56,8 @@ The AWS MCP login lets Codex inspect and manage the AWS account, but it is not a
 
 After deployment, add the CloudFormation outputs to `apps/web/.env.local` and visit `/api/aws/status`. The response is `configured: true` only when every required AWS connection value is present, and `health.reachable: true` only when the deployed API responds successfully.
 
+Set `DATA_BACKEND=dynamodb` to persist accounts, orders, group baskets and payment transaction records in the deployed table. Set `AUTH_PROVIDER=cognito` to use Cognito registration, email confirmation and password authentication. Local development continues using the file-backed store and local password verifier unless those switches are enabled.
+
 ## Demo requests
 
 - `paneer tikka for four under ₹700`

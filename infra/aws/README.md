@@ -1,6 +1,6 @@
 # Pico AWS test foundation
 
-This stack is intentionally small and serverless. It creates a Cognito user pool, one on-demand DynamoDB table, an encrypted SQS queue, an EventBridge bus, and a 128 MB Lambda exposed through an HTTP API at `GET /health`.
+This stack is intentionally small and serverless. It creates a Cognito user pool, one on-demand DynamoDB table, an encrypted SQS queue, an EventBridge bus, a 128 MB Lambda exposed through an HTTP API at `GET /health`, and a least-privilege Amplify SSR compute role that can access only the Pico table.
 
 It does **not** create Bedrock provisioned throughput, OpenSearch, RDS, EC2, ECS, a NAT gateway, or any continuously running compute. AWS can still charge when usage exceeds an account's current free allowances, so inspect Billing and Free Tier before deployment and remove the stack after testing.
 

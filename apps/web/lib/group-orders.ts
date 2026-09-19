@@ -1,12 +1,11 @@
 import "server-only";
 
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
-import path from "node:path";
 import { createOrder, updateOrderPayment, type AccountOrder } from "./auth";
 import { deriveGroupCollectionStatus } from "./group-state";
 import { calculateSettlementAmounts } from "./split-allocation";
 import { capturePayment, createPaymentTransaction } from "./payments";
+import { readState, writeState } from "./state-store";
 
 export type GroupStatus = "draft" | "locked" | "collecting" | "ready" | "placed" | "cancelled" | "expired";
 export type ContributionStatus = "due" | "pending" | "paid" | "failed";
@@ -84,8 +83,6 @@ export type PublicGroupView = {
   };
 };
 
-const dataDirectory = path.join(process.cwd(), ".zaply-data");
-const groupsFile = path.join(dataDirectory, "group-orders.json");
 let writeQueue = Promise.resolve();
 
 function digest(value: string) { return createHash("sha256").update(value).digest("hex"); }
@@ -99,14 +96,10 @@ function serialize<T>(operation: () => Promise<T>) {
   return result;
 }
 async function readGroups(): Promise<GroupOrder[]> {
-  try { return JSON.parse(await readFile(groupsFile, "utf8")); }
-  catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return []; throw error; }
+  return readState("group-orders", () => []);
 }
 async function writeGroups(groups: GroupOrder[]) {
-  await mkdir(dataDirectory, { recursive: true });
-  const temporary = `${groupsFile}.${randomUUID()}.tmp`;
-  await writeFile(temporary, JSON.stringify(groups, null, 2), { mode: 0o600 });
-  await rename(temporary, groupsFile);
+  await writeState("group-orders", groups);
 }
 function createToken(id: string) {
   const secret = randomBytes(24).toString("base64url");

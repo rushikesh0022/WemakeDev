@@ -1,9 +1,9 @@
 import "server-only";
 
 import { createHmac, randomBytes, randomUUID, scryptSync, timingSafeEqual } from "node:crypto";
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
-import path from "node:path";
+import { CognitoIdentityProviderClient, ConfirmSignUpCommand, InitiateAuthCommand, SignUpCommand } from "@aws-sdk/client-cognito-identity-provider";
 import { cookies } from "next/headers";
+import { readState, writeState } from "./state-store";
 
 export const SESSION_COOKIE = "pico_session";
 
@@ -46,8 +46,17 @@ type StoredUser = {
 
 export type PublicUser = Omit<StoredUser, "passwordSalt" | "passwordHash">;
 
-const dataDirectory = path.join(process.cwd(), ".zaply-data");
-const usersFile = path.join(dataDirectory, "users.json");
+const cognito = new CognitoIdentityProviderClient({ region: process.env.AWS_REGION || "us-east-1" });
+
+function useCognito() {
+  return process.env.AUTH_PROVIDER === "cognito";
+}
+
+function cognitoClientId() {
+  const value = process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID?.trim();
+  if (!value) throw new Error("NEXT_PUBLIC_COGNITO_CLIENT_ID is required when AUTH_PROVIDER=cognito.");
+  return value;
+}
 
 function developmentDemoUser(): StoredUser {
   const passwordSalt = "pico-demo-account-v1";
@@ -105,19 +114,11 @@ function normalizeOrder(order: AccountOrder | Record<string, unknown>): AccountO
 }
 
 async function readUsers(): Promise<StoredUser[]> {
-  try {
-    return JSON.parse(await readFile(usersFile, "utf8"));
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return process.env.NODE_ENV === "production" ? [] : [developmentDemoUser()];
-    throw error;
-  }
+  return readState("users", () => process.env.NODE_ENV === "production" ? [] : [developmentDemoUser()]);
 }
 
 async function writeUsers(users: StoredUser[]) {
-  await mkdir(dataDirectory, { recursive: true });
-  const temporary = `${usersFile}.${randomUUID()}.tmp`;
-  await writeFile(temporary, JSON.stringify(users, null, 2), { mode: 0o600 });
-  await rename(temporary, usersFile);
+  await writeState("users", users);
 }
 
 function hashPassword(password: string, salt: string) {
@@ -137,9 +138,26 @@ export async function registerUser(input: { name: string; email: string; phone?:
   if (input.password.length < 8) throw new Error("Password must contain at least 8 characters.");
   const users = await readUsers();
   if (users.some((user) => user.email === email)) throw new Error("An account with this email already exists.");
+  let cognitoSub: string | undefined;
+  let confirmationRequired = false;
+  if (useCognito()) {
+    try {
+      const result = await cognito.send(new SignUpCommand({
+        ClientId: cognitoClientId(),
+        Username: email,
+        Password: input.password,
+        UserAttributes: [{ Name: "name", Value: name }, { Name: "email", Value: email }]
+      }));
+      cognitoSub = result.UserSub;
+      confirmationRequired = !result.UserConfirmed;
+    } catch (error) {
+      if ((error as { name?: string }).name === "UsernameExistsException") throw new Error("An account with this email already exists.");
+      throw error;
+    }
+  }
   const passwordSalt = randomBytes(16).toString("hex");
   const user: StoredUser = {
-    id: `usr_${randomUUID().replaceAll("-", "")}`,
+    id: cognitoSub ?? `usr_${randomUUID().replaceAll("-", "")}`,
     name,
     email,
     phone,
@@ -151,17 +169,42 @@ export async function registerUser(input: { name: string; email: string; phone?:
     orders: []
   };
   await writeUsers([...users, user]);
-  return publicUser(user);
+  return { user: publicUser(user), confirmationRequired };
 }
 
 export async function authenticateUser(emailInput: string, password: string) {
   const email = emailInput.trim().toLowerCase();
   const user = (await readUsers()).find((candidate) => candidate.email === email);
   if (!user) return null;
+  if (useCognito()) {
+    try {
+      await cognito.send(new InitiateAuthCommand({
+        ClientId: cognitoClientId(),
+        AuthFlow: "USER_PASSWORD_AUTH",
+        AuthParameters: { USERNAME: email, PASSWORD: password }
+      }));
+      return publicUser(user);
+    } catch {
+      return null;
+    }
+  }
   const provided = Buffer.from(hashPassword(password, user.passwordSalt), "hex");
   const expected = Buffer.from(user.passwordHash, "hex");
   if (provided.length !== expected.length || !timingSafeEqual(provided, expected)) return null;
   return publicUser(user);
+}
+
+export async function confirmRegistration(emailInput: string, codeInput: string) {
+  if (!useCognito()) return true;
+  const email = emailInput.trim().toLowerCase();
+  const code = codeInput.trim();
+  if (!email || !code) throw new Error("Enter the verification code sent to your email.");
+  await cognito.send(new ConfirmSignUpCommand({
+    ClientId: cognitoClientId(),
+    Username: email,
+    ConfirmationCode: code
+  }));
+  return true;
 }
 
 export async function updateUser(userId: string, input: { name?: string; phone?: string; address?: Address | null }) {
