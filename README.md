@@ -1,8 +1,8 @@
-# Zaply v1
+# Pico
 
-A local-first quick-commerce MVP with a single hybrid search, optional AI basket planning, editable suggestions, a synchronized cart, provider-ready checkout, and post-order UPI splitting.
+A mobile-first quick-commerce application with hybrid search, optional basket planning, live catalog data, provider-ready checkout, and shared Amazon Pay group baskets.
 
-This repository contains the first complete Zaply MVP release (`v1.0.0`).
+Pico supports both individual checkout and a pre-checkout group flow where friends choose products and contribute before one delivery order is placed.
 
 ## Run the web app
 
@@ -17,17 +17,23 @@ Before starting, copy the environment template and add your server-side API key:
 cp apps/web/.env.example apps/web/.env.local
 ```
 
-Open [http://localhost:3000](http://localhost:3000). The top search returns normal catalog results first. Choose **Ask Zaply AI** below autocomplete or below the results when the same text describes a recipe, occasion, or goal. The API key is never sent to the browser.
+Open [http://localhost:3000](http://localhost:3000). The top search returns normal catalog results first. Choose **Plan this basket** below autocomplete or below the results when the same text describes a recipe, occasion, or goal. The API key is never sent to the browser.
+
+For a fresh local checkout, sign in with `demo@zaply.app` and `ZaplyDemo123!`. This development-only account is created in memory when no local user database exists and is never seeded in production.
 
 The delivery header accepts a saved account address, a manually entered neighbourhood, or browser location. GPS is requested only after the customer chooses **Use my current location**; the server converts the coordinates to a suburb-level label and the browser stores that label for future visits. The local MVP uses OpenStreetMap Nominatim for this lookup. Set `GEOCODING_REVERSE_URL` to a managed or self-hosted endpoint for production traffic.
 
 Customer accounts use salted `scrypt` password hashes and signed HTTP-only session cookies. Set a long random `AUTH_SECRET` before deployment. To grant the separate control-room role, list approved email addresses in `ADMIN_EMAILS` as a comma-separated value before those users register. Local account records are written to the ignored `apps/web/.zaply-data` directory; replace this adapter with Cognito or a managed database in production.
 
-## Payment and friend splitting
+## Amazon Pay group baskets
 
 The local checkout uses `PAYMENT_PROVIDER=fake`. In development, its selector can reproduce approved, pending, declined, and timed-out payment states. An order becomes paid only after the server-side provider adapter approves it.
 
-After a paid order, the owner can create a seven-day private split from **Account → Orders**. Friends use the private link without creating an account, claim whole item quantities, and pay the owner directly using the generated UPI intent or QR. The owner confirms receipt. Zaply never handles the reimbursement, requests a UPI PIN, or claims to credit an Amazon Pay wallet. The local records live in the ignored `apps/web/.zaply-data` directory.
+From the cart, the owner can choose **Shop & pay with friends**. Pico creates a seven-day private basket. Friends open the link without an account, choose whole product quantities, link Amazon Pay, and pay Pico for their portion. Once all friend contributions are approved, the owner links Amazon Pay, pays the remaining portion, and places one delivery order.
+
+The owner can then open the mobile-first tracking screen, which shows the confirmed, packing, on-the-way, and delivered stages, ETA, delivery address, and purchased line items.
+
+The local adapter simulates Amazon account linking and merchant charges. It does not transfer money between personal wallets. Amazon's documented merchant APIs support customer account linking, instrument lookup, merchant charges, status checks, and refunds; a real sandbox connection still requires merchant onboarding and credentials.
 
 `AmazonPayProvider` and the IPN route are deliberately unconfigured boundaries. Do not set `PAYMENT_PROVIDER=amazon_pay` until merchant onboarding, sandbox credentials, callback safelisting, signed-IPN verification, and status reconciliation are implemented.
 

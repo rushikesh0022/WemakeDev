@@ -5,7 +5,7 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { cookies } from "next/headers";
 
-export const SESSION_COOKIE = "zaply_session";
+export const SESSION_COOKIE = "pico_session";
 
 export type Address = {
   label: string;
@@ -26,8 +26,9 @@ export type AccountOrder = {
   sharedChargePaise: number;
   orderDiscountPaise: number;
   itemCount: number;
+  fulfillmentStatus: "confirmed" | "packing" | "out_for_delivery" | "delivered";
+  estimatedDeliveryAt: string;
   items: Array<{ lineId: string; productId: string; name: string; quantity: number; price: number }>;
-  splitId?: string;
 };
 
 type StoredUser = {
@@ -48,6 +49,22 @@ export type PublicUser = Omit<StoredUser, "passwordSalt" | "passwordHash">;
 const dataDirectory = path.join(process.cwd(), ".zaply-data");
 const usersFile = path.join(dataDirectory, "users.json");
 
+function developmentDemoUser(): StoredUser {
+  const passwordSalt = "pico-demo-account-v1";
+  return {
+    id: "usr_pico_demo",
+    name: "Pico Demo User",
+    email: "demo@zaply.app",
+    phone: "",
+    passwordSalt,
+    passwordHash: hashPassword("ZaplyDemo123!", passwordSalt),
+    role: "customer",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    address: null,
+    orders: []
+  };
+}
+
 function publicUser(user: StoredUser): PublicUser {
   const { passwordHash: _hash, passwordSalt: _salt, ...safe } = user;
   return { ...safe, phone: safe.phone ?? "", address: safe.address ?? null, orders: (safe.orders ?? []).map(normalizeOrder) };
@@ -65,9 +82,13 @@ function normalizeOrder(order: AccountOrder | Record<string, unknown>): AccountO
   }));
   const total = Math.max(0, Number(record.total) || items.reduce((sum, item) => sum + item.price * item.quantity, 0));
   const legacyPaid = rawStatus === "confirmed";
+  const createdAt = String(record.createdAt ?? new Date(0).toISOString());
+  const fulfillmentStatus = record.fulfillmentStatus === "packing" || record.fulfillmentStatus === "out_for_delivery" || record.fulfillmentStatus === "delivered"
+    ? record.fulfillmentStatus
+    : "confirmed";
   return {
     id: String(record.id ?? ""),
-    createdAt: String(record.createdAt ?? new Date(0).toISOString()),
+    createdAt,
     status: legacyPaid ? "paid" : rawStatus === "payment_pending" || rawStatus === "paid" || rawStatus === "payment_failed" || rawStatus === "refunded" ? rawStatus : "paid",
     paymentStatus: record.paymentStatus ?? (legacyPaid ? "approved" : "approved"),
     paymentProvider: record.paymentProvider ?? "fake",
@@ -77,8 +98,9 @@ function normalizeOrder(order: AccountOrder | Record<string, unknown>): AccountO
     sharedChargePaise: record.sharedChargePaise ?? 0,
     orderDiscountPaise: record.orderDiscountPaise ?? 0,
     itemCount: record.itemCount ?? items.reduce((sum, item) => sum + item.quantity, 0),
-    items,
-    splitId: record.splitId
+    fulfillmentStatus,
+    estimatedDeliveryAt: record.estimatedDeliveryAt ?? new Date(Date.parse(createdAt) + 12 * 60_000).toISOString(),
+    items
   };
 }
 
@@ -86,7 +108,7 @@ async function readUsers(): Promise<StoredUser[]> {
   try {
     return JSON.parse(await readFile(usersFile, "utf8"));
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return process.env.NODE_ENV === "production" ? [] : [developmentDemoUser()];
     throw error;
   }
 }
@@ -175,6 +197,8 @@ export async function createOrder(userId: string, input: { total: number; items:
     sharedChargePaise: 0,
     orderDiscountPaise: 0,
     itemCount: input.items.reduce((sum, item) => sum + item.quantity, 0),
+    fulfillmentStatus: "confirmed",
+    estimatedDeliveryAt: new Date(Date.now() + 12 * 60_000).toISOString(),
     items: input.items.slice(0, 100).map((item, index) => ({ ...item, lineId: `line_${index + 1}` }))
   };
   users[index] = { ...users[index], orders: [order, ...(users[index].orders ?? [])] };
@@ -202,23 +226,10 @@ export async function updateOrderPayment(userId: string, orderId: string, paymen
   return order;
 }
 
-export async function attachSplitToOrder(userId: string, orderId: string, splitId: string) {
-  const users = await readUsers();
-  const userIndex = users.findIndex((user) => user.id === userId);
-  if (userIndex < 0) return null;
-  const orderIndex = users[userIndex].orders.findIndex((order) => order.id === orderId);
-  if (orderIndex < 0) return null;
-  const order = normalizeOrder(users[userIndex].orders[orderIndex]);
-  order.splitId = splitId;
-  users[userIndex].orders[orderIndex] = order;
-  await writeUsers(users);
-  return order;
-}
-
 function authSecret() {
   if (process.env.AUTH_SECRET) return process.env.AUTH_SECRET;
   if (process.env.NODE_ENV === "production") throw new Error("AUTH_SECRET is required in production.");
-  return "zaply-local-development-secret-change-before-deploying";
+  return "pico-local-development-secret-change-before-deploying";
 }
 
 export function createSessionToken(user: PublicUser) {

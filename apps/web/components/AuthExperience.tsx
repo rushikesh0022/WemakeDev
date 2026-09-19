@@ -32,7 +32,7 @@ export function AuthExperience() {
   return (
     <div className="auth-page">
       <section className="auth-intro">
-        <span>YOUR ZAPLY ACCOUNT</span>
+        <span>YOUR PICO ACCOUNT</span>
         <h1>Everything you need,<br />remembered for you.</h1>
         <p>Save delivery addresses, review orders, keep your preferences, and receive recommendations tied to your account.</p>
         <div><ShieldCheck /><p><strong>Private by design</strong><small>Your session is stored in a secure HTTP-only cookie.</small></p></div>
@@ -43,7 +43,7 @@ export function AuthExperience() {
           <button className={mode === "login" ? "active" : ""} onClick={() => { setMode("login"); setError(""); }}>Sign in</button>
           <button className={mode === "register" ? "active" : ""} onClick={() => { setMode("register"); setError(""); }}>Create account</button>
         </div>
-        <header><div><UserRound /></div><h2>{mode === "login" ? "Welcome back" : "Join Zaply"}</h2><p>{mode === "login" ? "Sign in to continue shopping." : "Create your customer account in a few seconds."}</p></header>
+        <header><div><UserRound /></div><h2>{mode === "login" ? "Welcome back" : "Join Pico"}</h2><p>{mode === "login" ? "Sign in to continue shopping." : "Create your customer account in a few seconds."}</p></header>
         <form onSubmit={submit}>
           {mode === "register" && <label>Full name<input name="name" autoComplete="name" minLength={2} required placeholder="Your name" /></label>}
           <label>Email address<div className="input-with-icon"><Mail /><input type="email" name="email" autoComplete="email" required placeholder="you@example.com" /></div></label>

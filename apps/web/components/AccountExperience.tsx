@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowLeft, ChevronRight, CircleHelp, CreditCard, LogOut, MapPin, Package, Pencil, Settings, ShieldCheck } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import type { PublicUser } from "@/lib/auth";
@@ -12,9 +13,6 @@ export function AccountExperience({ initialUser, initialView = "home" }: { initi
   const [user, setUser] = useState(initialUser);
   const [view, setView] = useState<View>(initialView);
   const [message, setMessage] = useState("");
-  const [splitOrderId, setSplitOrderId] = useState("");
-  const [ownerVpa, setOwnerVpa] = useState("");
-  const [splitBusy, setSplitBusy] = useState(false);
   const initials = user.name.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase();
   const addressSummary = user.address ? `${user.address.label} · ${user.address.city}` : "Add a delivery address";
 
@@ -44,23 +42,13 @@ export function AccountExperience({ initialUser, initialView = "home" }: { initi
     setMessage("");
   }
 
-  async function createSplit(event: FormEvent<HTMLFormElement>, orderId: string) {
-    event.preventDefault(); setSplitBusy(true); setMessage("");
-    const response = await fetch(`/api/orders/${orderId}/splits`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ownerVpa }) });
-    const data = await response.json(); setSplitBusy(false);
-    if (response.status === 409 && data.splitId) return router.push(`/split/manage/${data.splitId}`);
-    if (!response.ok) return setMessage(data.error ?? "Could not create the split.");
-    window.sessionStorage.setItem(`zaply-share-${data.split.id}`, data.publicToken);
-    router.push(`/split/manage/${data.split.id}`);
-  }
-
   return (
     <div className="account-page">
       {view === "home" ? <>
         <section className="account-profile-card">
           <div className="account-avatar">{initials}</div>
           <div className="account-profile-copy">
-            <span>MY ZAPLY ACCOUNT</span>
+            <span>MY PICO ACCOUNT</span>
             <h1>{user.name}</h1>
             <p>{user.phone || user.email}</p>
             {user.phone && <small>{user.email}</small>}
@@ -71,8 +59,9 @@ export function AccountExperience({ initialUser, initialView = "home" }: { initi
 
         <section className="account-shortcuts" aria-label="Account options">
           <AccountShortcut icon={Package} title="Your orders" status={user.orders.length ? `${user.orders.length} recent ${user.orders.length === 1 ? "order" : "orders"}` : "Track and reorder"} onClick={() => open("orders")} />
+          <AccountShortcut icon={CreditCard} title="Group baskets" status="Choose and pay together" onClick={() => router.push("/groups")} />
           <AccountShortcut icon={MapPin} title="Saved addresses" status={addressSummary} onClick={() => open("addresses")} />
-          <AccountShortcut icon={CreditCard} title="Payments" status="Added securely at checkout" onClick={() => open("payments")} />
+          <AccountShortcut icon={CreditCard} title="Payments" status="Amazon Pay at checkout" onClick={() => open("payments")} />
           <AccountShortcut icon={Settings} title="Preferences" status="Personalisation and substitutions" onClick={() => open("preferences")} />
           <AccountShortcut icon={CircleHelp} title="Help & support" status="Get help with your orders" onClick={() => open("help")} wide />
           {user.role === "admin" && <AccountShortcut icon={ShieldCheck} title="Admin control room" status="Catalog and recommendation tools" onClick={() => router.push("/admin")} wide />}
@@ -83,10 +72,10 @@ export function AccountExperience({ initialUser, initialView = "home" }: { initi
         <button className="account-back" onClick={() => open("home")}><ArrowLeft />Back to account</button>
         <div className="account-content">
           {view === "profile" && <><header><span>PERSONAL DETAILS</span><h2>Edit your profile</h2><p>Keep your contact information accurate for delivery updates.</p></header><form onSubmit={save} className="account-form"><label>Full name<input name="name" defaultValue={user.name} minLength={2} required /></label><label>Email address<input value={user.email} disabled /></label><label>Phone number<input name="phone" defaultValue={user.phone} placeholder="Add a phone number" /></label><label>Member since<input value={new Date(user.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })} disabled /></label><button>Save profile</button></form></>}
-          {view === "addresses" && <><header><span>DELIVERY</span><h2>Saved address</h2><p>Zaply uses this address during checkout and location selection.</p></header><form onSubmit={save} className="account-form"><label>Label<input name="label" defaultValue={user.address?.label ?? "Home"} required /></label><label className="wide">Address<input name="line1" defaultValue={user.address?.line1 ?? ""} placeholder="Flat, building and street" required /></label><label>City<input name="city" defaultValue={user.address?.city ?? ""} required /></label><label>PIN code<input name="pincode" defaultValue={user.address?.pincode ?? ""} inputMode="numeric" required /></label><button>Save address</button></form></>}
-          {view === "orders" && (user.orders.length ? <><header><span>ORDER HISTORY</span><h2>Your orders</h2><p>Review recent baskets or split a paid order with friends.</p></header><div className="account-orders">{user.orders.map((order) => <div className="account-order-block" key={order.id}><article><div><strong>{order.id}</strong><small>{new Date(order.createdAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</small></div><span>{order.itemCount} {order.itemCount === 1 ? "item" : "items"}</span><b>₹{order.total}</b><em>{order.status.replaceAll("_", " ")}</em>{order.status === "paid" && <button className="order-split-button" onClick={() => order.splitId ? router.push(`/split/manage/${order.splitId}`) : setSplitOrderId(splitOrderId === order.id ? "" : order.id)}>{order.splitId ? "Manage split" : "Split with friends"}</button>}</article>{splitOrderId === order.id && !order.splitId && <form className="split-order-form" onSubmit={(event) => createSplit(event, order.id)}><label>Your UPI ID<input value={ownerVpa} onChange={(event) => setOwnerVpa(event.target.value)} placeholder="yourname@bank" required /></label><div><p>Friends will reimburse this UPI ID directly. Zaply never receives their money.</p><button disabled={splitBusy}>{splitBusy ? "Creating…" : "Create private split"}</button></div></form>}</div>)}</div></> : <EmptyPanel icon={Package} title="No orders yet" copy="Your completed Zaply orders will appear here, ready to review or reorder." />)}
+          {view === "addresses" && <><header><span>DELIVERY</span><h2>Saved address</h2><p>Pico uses this address during checkout and location selection.</p></header><form onSubmit={save} className="account-form"><label>Label<input name="label" defaultValue={user.address?.label ?? "Home"} required /></label><label className="wide">Address<input name="line1" defaultValue={user.address?.line1 ?? ""} placeholder="Flat, building and street" required /></label><label>City<input name="city" defaultValue={user.address?.city ?? ""} required /></label><label>PIN code<input name="pincode" defaultValue={user.address?.pincode ?? ""} inputMode="numeric" required /></label><button>Save address</button></form></>}
+          {view === "orders" && (user.orders.length ? <><header><span>ORDER HISTORY</span><h2>Your orders</h2><p>Track personal and group basket deliveries.</p></header><div className="account-orders">{user.orders.map((order) => <div className="account-order-block" key={order.id}><article><div><strong>{order.id}</strong><small>{new Date(order.createdAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</small></div><span>{order.itemCount} {order.itemCount === 1 ? "item" : "items"}</span><b>₹{order.total}</b><em>{order.status.replaceAll("_", " ")}</em><Link className="account-order-track" href={`/orders/${order.id}`}>Track order <ChevronRight /></Link></article></div>)}</div></> : <EmptyPanel icon={Package} title="No orders yet" copy="Your completed Pico orders will appear here, ready to review or reorder." />)}
           {view === "payments" && <EmptyPanel icon={CreditCard} title="No payment methods saved" copy="For your security, payment details will be handled by the payment provider during checkout." />}
-          {view === "preferences" && <><header><span>PERSONALISATION</span><h2>Shopping preferences</h2><p>Choose how Zaply personalises recommendations and substitutions.</p></header><div className="preference-list"><label><span><strong>Use order history</strong><small>Personalise results using products you purchase.</small></span><input type="checkbox" defaultChecked /></label><label><span><strong>Offers and price alerts</strong><small>Receive updates about relevant deals.</small></span><input type="checkbox" /></label><label><span><strong>Substitution approval</strong><small>Ask before replacing unavailable products.</small></span><input type="checkbox" defaultChecked /></label></div></>}
+          {view === "preferences" && <><header><span>PERSONALISATION</span><h2>Shopping preferences</h2><p>Choose how Pico personalises recommendations and substitutions.</p></header><div className="preference-list"><label><span><strong>Use order history</strong><small>Personalise results using products you purchase.</small></span><input type="checkbox" defaultChecked /></label><label><span><strong>Offers and price alerts</strong><small>Receive updates about relevant deals.</small></span><input type="checkbox" /></label><label><span><strong>Substitution approval</strong><small>Ask before replacing unavailable products.</small></span><input type="checkbox" defaultChecked /></label></div></>}
           {view === "help" && <EmptyPanel icon={CircleHelp} title="How can we help?" copy="Order support, common questions, and live assistance will be available here when the support service is connected." />}
           {message && <p className={message.startsWith("Saved") ? "form-success" : "form-error"} role="status">{message}</p>}
         </div>

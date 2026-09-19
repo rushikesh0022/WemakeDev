@@ -3,13 +3,14 @@ import "./globals.css";
 import "./nowly.css";
 import "./refined.css";
 import "./zaply.css";
+import "./pico.css";
 import { AppShell } from "@/components/AppShell";
 import { CartProvider } from "@/lib/cart-context";
 
 export const metadata: Metadata = {
-  title: "Zaply — good things arrive faster",
+  title: "Pico — your neighbourhood store, in minutes",
   description: "Fast shopping with an intelligent basket builder",
-  applicationName: "Zaply"
+  applicationName: "Pico"
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

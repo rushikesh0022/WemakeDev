@@ -14,12 +14,12 @@ export function HomeClient() {
   return (
     <div className="home-page nowly-home">
       <section className="commerce-hero">
-        <img className="zaply-hero-art" src="/campaigns/zaply-3d-bag.png" alt="A green Zaply shopping bag filled with fresh groceries" />
+        <img className="zaply-hero-art" src="/campaigns/pico-market-tote.png" alt="A coral market tote filled with fresh groceries" />
         <div className="commerce-hero__shade" />
         <div className="commerce-hero__copy">
           <span><Sparkles size={14} /> Fresh essentials, delivered quickly</span>
           <h1>Good things<br /><em>arrive faster.</em></h1>
-          <p>Search the catalog from the single bar above. Zaply ranks the best match first, then can turn the same request into a complete editable basket.</p>
+          <p>Search the live store, build a complete basket, or invite friends to choose and pay for their items.</p>
           <button className="hero-browse" onClick={() => document.querySelector<HTMLInputElement>(".global-search input")?.focus()}>Start shopping <ArrowRight size={18} /></button>
         </div>
         <div className="commerce-hero__eta"><Clock3 /><span><strong>{store.eta}</strong><small>estimated delivery</small></span></div>
@@ -37,7 +37,7 @@ export function HomeClient() {
 
       <section className="campaign-split">
         <article className="campaign-card campaign-card--smart">
-          <div><span>ZAPLY AI</span><h2>One search.<br />A complete basket.</h2><p>Describe the outcome and keep only the items you want.</p><button onClick={() => document.querySelector<HTMLInputElement>(".global-search input")?.focus()}>Try smart search <ArrowRight size={17} /></button></div>
+          <div><span>SMART BASKETS</span><h2>One search.<br />A complete basket.</h2><p>Describe the outcome and keep only the items you want.</p><button onClick={() => document.querySelector<HTMLInputElement>(".global-search input")?.focus()}>Plan my basket <ArrowRight size={17} /></button></div>
         </article>
         <article className="campaign-card campaign-card--snack">
           <img src="/campaigns/nowly-snack-run.jpg" alt="A colorful tote filled with snacks and refreshments" />
@@ -53,7 +53,7 @@ export function HomeClient() {
         <ProductGrid products={categoryLeaders(12)} source="Fresh picks" />
       </Section>
 
-      <section className="nowly-story"><div><span>SHOP THE PLAN</span><h2>The search bar is the new aisle.</h2></div><p>Zaply understands what you are trying to do, retrieves only relevant products, then lets you swap, remove, or add before anything reaches the cart.</p></section>
+      <section className="nowly-story"><div><span>SHOP TOGETHER</span><h2>Your basket, everyone’s choice.</h2></div><p>Pico understands the plan, retrieves real in-stock products, and lets everyone choose their own items before checkout.</p></section>
     </div>
   );
 }

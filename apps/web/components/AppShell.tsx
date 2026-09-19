@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Home, LayoutGrid, Leaf, Package, Search, ShoppingBag, Sparkles, UserRound } from "lucide-react";
+import { ArrowRight, Home, LayoutGrid, Package, Search, ShoppingBag, Sparkles, UserRound, Zap } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
 import { useCart } from "@/lib/cart-context";
@@ -28,7 +28,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="app-shell">
       <header className="topbar">
         <div className="topbar__inner">
-          <Link href="/" className="brand-mark" aria-label="Zaply home"><Leaf className="brand-mark__leaf" fill="currentColor" /><span>zaply</span></Link>
+          <Link href="/" className="brand-mark" aria-label="Pico home"><span className="brand-mark__bolt"><Zap fill="currentColor" /></span><span>pico</span></Link>
           <LocationPicker />
           <form className="global-search" onSubmit={submit} role="search" onFocus={() => setSearchOpen(true)}>
             <Search size={19} />
@@ -37,7 +37,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {searchOpen && query.trim().length > 1 && <div className="search-suggest" role="listbox">
               <div className="search-suggest__label">BEST MATCHES</div>
               {suggestions.map((product) => <button type="button" className="search-suggest__item" key={product.id} onClick={() => { setQuery(product.name); setSearchOpen(false); router.push(`/search?q=${encodeURIComponent(product.name)}`); }}><img src={`/products/${product.id}.webp`} alt="" /><span><strong>{product.name}</strong><small>{product.brand} · {product.subcategory}</small></span><b>₹{product.price}</b></button>)}
-              <button type="button" className="search-suggest__ai" onClick={() => { setSearchOpen(false); router.push(`/search?q=${encodeURIComponent(query.trim())}&mode=ai`); }}><span><Sparkles size={18} /><b>Ask Zaply AI</b><small>Build a complete editable basket for “{query.trim()}”</small></span><ArrowRight size={18} /></button>
+              <button type="button" className="search-suggest__ai" onClick={() => { setSearchOpen(false); router.push(`/search?q=${encodeURIComponent(query.trim())}&mode=ai`); }}><span><Sparkles size={18} /><b>Plan this basket</b><small>Build a complete editable basket for “{query.trim()}”</small></span><ArrowRight size={18} /></button>
             </div>}
           </form>
           <nav className="desktop-actions">
