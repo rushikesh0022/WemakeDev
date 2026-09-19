@@ -15,7 +15,8 @@ export function HomeClient() {
   return (
     <div className="home-page nowly-home nesto-home">
       <section className="commerce-hero">
-        <img className="zaply-hero-art" src="/nesto/home-market.webp" alt="A Nesto grocery tote and electric delivery scooter" />
+        <div className="hero-motion" aria-hidden="true"><i className="hero-motion__orbit hero-motion__orbit--one" /><i className="hero-motion__orbit hero-motion__orbit--two" /><i className="hero-motion__dash" /></div>
+        <img className="zaply-hero-art" src="/nesto/motion/hero-delivery-v2.webp" alt="A Nesto grocery tote and electric delivery scooter" />
         <div className="commerce-hero__shade" />
         <div className="commerce-hero__copy">
           <span><Sparkles size={14} /> Your neighbourhood store</span>

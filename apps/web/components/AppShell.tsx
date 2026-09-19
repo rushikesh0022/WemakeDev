@@ -7,6 +7,7 @@ import { FormEvent, useMemo, useState } from "react";
 import { useCart } from "@/lib/cart-context";
 import { searchProducts } from "@/lib/catalog";
 import { LocationPicker } from "./LocationPicker";
+import { NestoIntro } from "./NestoIntro";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -26,6 +27,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="app-shell">
+      <NestoIntro />
       <header className="topbar">
         <div className="topbar__inner">
           <Link href="/" className="brand-mark" aria-label="Nesto home"><span className="brand-mark__bolt"><Leaf fill="currentColor" /></span><span>nesto</span></Link>

@@ -17,6 +17,18 @@ body { background: var(--nesto-paper); color: var(--nesto-ink); }
 button { transition: transform .18s ease, background .18s ease, box-shadow .18s ease; }
 button:active { transform: scale(.97); }
 
+.nesto-intro { position: fixed; z-index: 999; inset: 0; overflow: hidden; display: grid; place-items: center; color: white; background: radial-gradient(circle at 50% 43%,#356c4c 0 12%,#173f2a 48%,#102e20 100%); animation: introIn .45s ease both; }
+.nesto-intro.is-leaving { pointer-events: none; animation: introOut .55s cubic-bezier(.7,0,.9,.45) both; }
+.nesto-intro>button { position: absolute; z-index: 4; top: max(22px,env(safe-area-inset-top)); right: 24px; padding: 9px 13px; border: 1px solid rgba(255,255,255,.28); border-radius: 999px; color: white; background: rgba(255,255,255,.1); backdrop-filter: blur(12px); font-size: 11px; }
+.nesto-intro__halo { position: absolute; width: min(82vw,620px); aspect-ratio: 1; border: 1px solid rgba(223,240,184,.2); border-radius: 50%; box-shadow: 0 0 0 46px rgba(223,240,184,.04),0 0 0 94px rgba(223,240,184,.025); animation: introHalo 2.1s ease-in-out infinite; }
+.nesto-intro>img { position: relative; z-index: 2; width: min(58vw,410px); max-height: 55vh; object-fit: contain; filter: drop-shadow(0 35px 35px rgba(0,0,0,.2)); animation: introBag 1.15s cubic-bezier(.18,.83,.24,1.16) both; }
+.nesto-intro__copy { position: absolute; z-index: 3; bottom: max(10vh,75px); display: flex; flex-direction: column; align-items: center; animation: introCopy .65s .55s ease both; }
+.nesto-intro__copy span { font: 850 clamp(38px,7vw,64px)/1 Manrope; letter-spacing: -4px; }
+.nesto-intro__copy strong { margin-top: 12px; font-size: 13px; }
+.nesto-intro__copy small { margin-top: 5px; color: #cfe0d2; font-size: 11px; }
+.nesto-intro__loader { position: absolute; bottom: max(4.5vh,34px); width: min(210px,45vw); height: 3px; overflow: hidden; border-radius: 3px; background: rgba(255,255,255,.14); }
+.nesto-intro__loader i { display: block; width: 45%; height: 100%; border-radius: inherit; background: var(--nesto-lime); animation: introLoad 1.75s .25s ease-in-out both; }
+
 .topbar { background: rgba(255,254,250,.94); border-bottom: 1px solid var(--nesto-line); color: var(--nesto-ink); box-shadow: none; }
 .topbar__inner { max-width: 1320px; }
 .brand-mark { display: inline-flex; align-items: center; gap: 8px; color: var(--nesto-forest); font-size: 29px; letter-spacing: -2px; }
@@ -35,7 +47,13 @@ button:active { transform: scale(.97); }
 
 .home-page,.search-page,.listing-page,.cart-page,.checkout-page { max-width: 1320px; }
 .commerce-hero { height: 466px; border: 1px solid #e2e8dc; border-radius: 32px; background: #f4f5ec; color: var(--nesto-ink); box-shadow: none; }
-.commerce-hero>.zaply-hero-art { inset: 0 0 0 auto; width: 62%; height: 100%; object-fit: cover; object-position: center; animation: heroReveal .75s cubic-bezier(.2,.75,.25,1) both; }
+.commerce-hero>.zaply-hero-art { z-index: 2; inset: 2% 1.5% 0 auto; width: 61%; height: 96%; object-fit: contain; object-position: center; animation: heroLand .9s cubic-bezier(.16,.88,.26,1.08) both,heroHover 5s 1s ease-in-out infinite; filter: drop-shadow(0 25px 24px rgba(23,63,42,.15)); }
+.hero-motion { position: absolute; z-index: 1; inset: 0; pointer-events: none; }
+.hero-motion__orbit { position: absolute; border: 1px solid rgba(36,103,68,.16); border-radius: 50%; animation: heroOrbit 8s linear infinite; }
+.hero-motion__orbit--one { width: 330px; height: 330px; right: 12%; top: 13%; }
+.hero-motion__orbit--two { width: 180px; height: 180px; right: 5%; top: 4%; animation-direction: reverse; animation-duration: 6s; }
+.hero-motion__orbit:after { content: ""; position: absolute; width: 11px; height: 11px; top: 20%; left: 2%; border-radius: 50%; background: var(--nesto-coral); box-shadow: 0 0 0 7px rgba(239,121,94,.12); }
+.hero-motion__dash { position: absolute; right: 7%; bottom: 17%; width: 45%; height: 14px; border-top: 2px dashed rgba(36,103,68,.16); border-radius: 50%; transform: rotate(-8deg); animation: dashDrift 2.2s linear infinite; }
 .commerce-hero__shade { background: linear-gradient(90deg,#f9f8ef 0%,rgba(249,248,239,.98) 38%,rgba(249,248,239,.45) 57%,transparent 72%); }
 .commerce-hero__copy { width: min(545px,48%); animation: heroCopyIn .65s .08s cubic-bezier(.2,.75,.25,1) both; }
 .commerce-hero__copy>span { color: var(--nesto-green); }
@@ -93,6 +111,10 @@ button:active { transform: scale(.97); }
 
 .cart-list,.order-card,.checkout-details article { border-color: var(--nesto-line); }
 .cart-list { border-radius: 23px; }
+.cart-row { animation: cartRowIn .45s cubic-bezier(.2,.78,.25,1) both; }
+.cart-row:nth-child(2) { animation-delay: 55ms; }
+.cart-row:nth-child(3) { animation-delay: 110ms; }
+.cart-row:nth-child(4) { animation-delay: 165ms; }
 .order-card { border-radius: 22px; box-shadow: 0 12px 34px rgba(23,63,42,.07); }
 .group-cart-button { border-color: var(--nesto-green); color: var(--nesto-green); background: #f3f8ef; }
 .share-order-intro { display: grid!important; grid-template-columns: 36px 1fr; gap: 10px; align-items: center; margin-top: 14px; padding: 13px!important; border: 0!important; border-radius: 13px; background: #f2f7ed; }
@@ -110,13 +132,26 @@ button:active { transform: scale(.97); }
 .checkout-steps b { font-size: 10px; }
 .checkout-steps i { width: 30px; height: 1px; background: #dce2dc; }
 .checkout-details article { position: relative; border-radius: 18px; background: white; }
+.checkout-details article { animation: checkoutStepIn .5s cubic-bezier(.2,.78,.25,1) both; }
+.checkout-details article:nth-child(2) { animation-delay: 80ms; }
+.checkout-details article:nth-child(3) { animation-delay: 160ms; }
 .checkout-details article>svg { color: var(--nesto-green); }
 .checkout-free { align-self: center; padding: 5px 7px; border-radius: 7px; color: #3a762b; background: #e8f5dc; font-size: 9px; }
 .payment-secure { align-self: center; display: inline-flex; align-items: center; gap: 4px; color: var(--nesto-green)!important; letter-spacing: 0!important; }
 .payment-secure svg { width: 14px; }
+.checkout-motion { position: fixed; z-index: 180; inset: 0; display: grid; place-items: center; padding: 24px; background: rgba(16,46,32,.7); backdrop-filter: blur(12px); animation: fadeIn .22s ease both; }
+.checkout-motion>div { width: min(92vw,380px); padding: 28px 25px 24px; display: flex; flex-direction: column; align-items: center; border-radius: 28px; background: var(--nesto-paper); box-shadow: 0 35px 90px rgba(0,0,0,.28); animation: paymentCard .5s cubic-bezier(.16,.9,.25,1.12) both; }
+.checkout-motion img { width: 180px; height: 150px; object-fit: contain; animation: paymentBag 1.5s ease-in-out infinite; }
+.checkout-motion span { margin-top: 8px; color: var(--nesto-green); font-size: 9px; font-weight: 850; letter-spacing: 1.4px; text-transform: uppercase; }
+.checkout-motion strong { margin-top: 7px; font: 750 17px/1.3 Manrope; text-align: center; }
+.checkout-motion i { width: 100%; height: 4px; margin-top: 22px; overflow: hidden; border-radius: 4px; background: #e4eae1; }
+.checkout-motion i:after { content: ""; display: block; width: 42%; height: 100%; border-radius: inherit; background: linear-gradient(90deg,var(--nesto-leaf),var(--nesto-green)); animation: paymentLoad 1.25s ease-in-out infinite; }
 
 .order-success--nesto { max-width: 680px; margin: auto; padding: 38px 20px 110px; }
-.order-success--nesto>img { width: min(100%,430px); aspect-ratio: 1; object-fit: cover; border-radius: 30px; animation: orderArt .65s cubic-bezier(.2,.75,.25,1) both; }
+.order-success__visual { position: relative; width: min(100%,520px)!important; height: 300px!important; overflow: hidden; border-radius: 30px!important; background: radial-gradient(circle at 68% 22%,#f2f8df,#eaf1df 52%,#dce9d6)!important; animation: orderArt .75s cubic-bezier(.2,.75,.25,1) both; }
+.order-success__visual>img { position: relative; z-index: 2; width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 20px 20px rgba(23,63,42,.13)); animation: journeyFloat 4s ease-in-out infinite; }
+.order-success__visual>i { position: absolute; z-index: 1; width: 60%; height: 60%; left: 20%; top: 20%; border: 1px solid rgba(36,103,68,.2); border-radius: 50%; animation: successRing 2s ease-out infinite; }
+.order-success__pulse { position: absolute; z-index: 3; right: 14%; top: 23%; width: 14px; height: 14px; border-radius: 50%; background: var(--nesto-coral); animation: locationPulse 1.5s ease-out infinite; }
 .order-success--nesto>.order-success__badge { width: 52px; height: 52px; margin-top: -27px; border: 6px solid var(--nesto-paper); color: white; background: var(--nesto-green); }
 .order-success--nesto>span { margin-top: 15px; color: var(--nesto-green); font-size: 9px; font-weight: 850; letter-spacing: 1.5px; }
 .order-success__steps { width: 100%; display: flex!important; align-items: center; padding: 15px 0!important; border: 0!important; }
@@ -136,7 +171,8 @@ button:active { transform: scale(.97); }
 
 .tracking-hero { min-height: 355px; color: var(--nesto-ink); border-color: #e0e7db; background: #f0f4e9; }
 .tracking-hero:before { display: none; }
-.tracking-hero__art { position: absolute; right: 0; top: 0; width: 52%; height: 100%; object-fit: cover; object-position: center; }
+.tracking-hero__art { position: absolute; z-index: 1; right: 0; top: 0; width: 56%; height: 100%; object-fit: contain; object-position: center; filter: drop-shadow(0 18px 22px rgba(23,63,42,.1)); animation: journeyFloat 4s ease-in-out infinite; }
+.tracking-hero__glow { position: absolute; z-index: 0; right: 7%; top: 9%; width: 40%; aspect-ratio: 1; border-radius: 50%; background: rgba(223,240,184,.48); filter: blur(3px); animation: trackingGlow 2.8s ease-in-out infinite; }
 .tracking-hero:after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg,#f0f4e9 0%,rgba(240,244,233,.98) 45%,rgba(240,244,233,.12) 70%,transparent); }
 .tracking-hero__copy,.tracking-eta,.tracking-route { z-index: 2; }
 .tracking-hero__copy>span,.tracking-card header>span,.tracking-address span { color: var(--nesto-green); }
@@ -149,6 +185,26 @@ button:active { transform: scale(.97); }
 @keyframes heroReveal { from { opacity: 0; transform: scale(1.06); } to { opacity: 1; transform: scale(1); } }
 @keyframes cardIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes orderArt { from { opacity: 0; transform: scale(.94) translateY(14px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+@keyframes introIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes introOut { to { opacity: 0; transform: scale(1.04); } }
+@keyframes introBag { 0% { opacity: 0; transform: translateY(80px) scale(.72) rotate(-7deg); } 65% { opacity: 1; transform: translateY(-8px) scale(1.04) rotate(2deg); } 100% { transform: translateY(0) scale(1) rotate(0); } }
+@keyframes introCopy { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes introHalo { 50% { transform: scale(1.06); opacity: .65; } }
+@keyframes introLoad { from { transform: translateX(-110%); } to { transform: translateX(225%); } }
+@keyframes heroLand { from { opacity: 0; transform: translate3d(60px,35px,0) scale(.86) rotate(4deg); } to { opacity: 1; transform: translate3d(0,0,0) scale(1) rotate(0); } }
+@keyframes heroHover { 0%,100% { transform: translate3d(0,0,0) rotate(-.5deg); } 50% { transform: translate3d(0,-9px,0) rotate(.6deg); } }
+@keyframes heroOrbit { to { transform: rotate(360deg); } }
+@keyframes dashDrift { 50% { transform: translateX(-12px) rotate(-8deg); opacity: .45; } }
+@keyframes journeyFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
+@keyframes successRing { from { opacity: .65; transform: scale(.75); } to { opacity: 0; transform: scale(1.35); } }
+@keyframes locationPulse { 0% { box-shadow: 0 0 0 0 rgba(239,121,94,.45); } 80%,100% { box-shadow: 0 0 0 18px rgba(239,121,94,0); } }
+@keyframes fadeIn { from { opacity: 0; } }
+@keyframes paymentCard { from { opacity: 0; transform: translateY(24px) scale(.94); } }
+@keyframes paymentBag { 0%,100% { transform: translateY(0) rotate(-1deg); } 50% { transform: translateY(-9px) rotate(1deg); } }
+@keyframes paymentLoad { from { transform: translateX(-110%); } to { transform: translateX(245%); } }
+@keyframes trackingGlow { 50% { transform: scale(1.08); opacity: .55; } }
+@keyframes cartRowIn { from { opacity: 0; transform: translateX(-16px); } }
+@keyframes checkoutStepIn { from { opacity: 0; transform: translateY(16px); } }
 
 @media (max-width: 1100px) {
   .category-grid--photo { grid-template-columns: repeat(6,1fr); }
@@ -172,7 +228,9 @@ button:active { transform: scale(.97); }
   .home-page,.search-page,.listing-page,.cart-page,.checkout-page { padding-left: 12px; padding-right: 12px; }
 
   .commerce-hero { height: 365px; margin: 10px 0 0; border-radius: 25px; }
-  .commerce-hero>.zaply-hero-art { inset: 0 0 auto 0; width: 100%; height: 59%; object-position: 53% 64%; }
+  .commerce-hero>.zaply-hero-art { inset: -2% -8% auto auto; width: 88%; height: 62%; object-position: center; }
+  .hero-motion__orbit--one { width: 230px; height: 230px; right: 2%; top: 2%; }
+  .hero-motion__orbit--two { width: 125px; height: 125px; }
   .commerce-hero__shade { background: linear-gradient(0deg,#f9f8ef 0%,rgba(249,248,239,.99) 48%,rgba(249,248,239,.12) 74%); }
   .commerce-hero__copy { left: 18px; right: 18px; top: auto; bottom: 16px; width: auto; transform: none; }
   .commerce-hero__copy { animation: none; }
@@ -241,7 +299,7 @@ button:active { transform: scale(.97); }
   .checkout-details article h2 { font-size: 15px; }
   .checkout-details article p { font-size: 10px; }
   .order-success--nesto { min-height: auto; padding-top: 14px; }
-  .order-success--nesto>img { max-width: 340px; border-radius: 24px; }
+  .order-success__visual { max-width: 360px!important; height: 235px!important; border-radius: 24px!important; }
   .order-success--nesto h1 { font-size: 28px; }
 
   .group-page { min-height: calc(100vh - 134px); }
@@ -250,7 +308,8 @@ button:active { transform: scale(.97); }
 
   .tracking-page { padding-top: 11px; }
   .tracking-hero { min-height: 385px; padding: 22px 19px; border-radius: 24px; }
-  .tracking-hero__art { inset: 0 0 auto 0; width: 100%; height: 62%; object-position: center; }
+  .tracking-hero__art { inset: 0 -8% auto auto; width: 116%; height: 60%; object-position: center; }
+  .tracking-hero__glow { width: 70%; right: 15%; top: 0; }
   .tracking-hero:after { background: linear-gradient(0deg,#f0f4e9 0%,rgba(240,244,233,.98) 48%,rgba(240,244,233,.03) 72%); }
   .tracking-hero__copy { position: absolute; left: 19px; right: 19px; bottom: 19px; width: auto; }
   .tracking-hero h1 { margin: 6px 0; font-size: 33px; letter-spacing: -2px; }
@@ -266,5 +325,5 @@ button:active { transform: scale(.97); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .commerce-hero>.zaply-hero-art,.commerce-hero__copy,.product-card,.order-success--nesto>img { animation: none!important; }
+  .commerce-hero>.zaply-hero-art,.commerce-hero__copy,.product-card,.order-success__visual,.order-success__visual>img,.tracking-hero__art,.tracking-hero__glow,.hero-motion__orbit,.hero-motion__dash,.cart-row,.checkout-details article,.nesto-intro>img,.nesto-intro__halo { animation: none!important; }
 }

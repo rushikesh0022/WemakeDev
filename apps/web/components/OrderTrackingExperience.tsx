@@ -34,7 +34,8 @@ export function OrderTrackingExperience({ order, address, allowFulfillmentSimula
 
   return <main className="tracking-page">
     <section className="tracking-hero page-enter">
-      <img className="tracking-hero__art" src="/nesto/delivery-journey.webp" alt="Nesto scooter delivering an order" />
+      <div className="tracking-hero__glow" aria-hidden="true" />
+      <img className="tracking-hero__art" src="/nesto/motion/order-journey-v2.webp" alt="Nesto scooter delivering an order" />
       <div className="tracking-hero__copy"><span>ORDER {liveOrder.id}</span><h1>{liveOrder.fulfillmentStatus === "delivered" ? "Delivered with care." : `${remainingMinutes || 1} min to your door`}</h1><p>{liveOrder.fulfillmentStatus === "confirmed" ? "Your payment is confirmed. The store has started preparing your basket." : liveOrder.fulfillmentStatus === "packing" ? "Your products are being checked and packed." : liveOrder.fulfillmentStatus === "out_for_delivery" ? "Your rider is heading to you now." : "We hope everything arrived just right."}</p></div>
       <div className="tracking-eta"><Clock3 /><span><small>ARRIVING BY</small><strong>{eta}</strong></span></div>
       <div className="tracking-route" aria-hidden="true"><span className="tracking-store"><ShoppingBag /></span><i /><span className="tracking-rider"><Bike /></span><i /><span className="tracking-home"><House /></span></div>
