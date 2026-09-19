@@ -7,6 +7,7 @@
     "dev": "pnpm --filter @zaply/web dev",
     "build": "pnpm --filter @zaply/web build",
     "lint": "pnpm --filter @zaply/web lint",
-    "test": "pnpm --filter @zaply/web test"
+    "test": "pnpm --filter @zaply/web test",
+    "aws:validate": "aws cloudformation validate-template --template-body file://infra/aws/pico-foundation.yaml --region us-east-1"
   }
 }

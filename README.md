@@ -50,6 +50,12 @@ To use Ollama instead, set `LLM_PROVIDER=ollama` in `apps/web/.env.local` and ru
 
 See [docs/architecture.md](docs/architecture.md) for the local and AWS target designs.
 
+## AWS test connection
+
+The AWS MCP login lets Codex inspect and manage the AWS account, but it is not an application credential. The deployable test foundation lives in `infra/aws/pico-foundation.yaml`; deployment instructions and cleanup commands are in `infra/aws/README.md`. It creates only serverless test resources and deliberately excludes Bedrock, OpenSearch, RDS, NAT gateways, and always-running compute.
+
+After deployment, add the CloudFormation outputs to `apps/web/.env.local` and visit `/api/aws/status`. The response is `configured: true` only when every required AWS connection value is present, and `health.reachable: true` only when the deployed API responds successfully.
+
 ## Demo requests
 
 - `paneer tikka for four under ₹700`

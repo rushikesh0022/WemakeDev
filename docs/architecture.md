@@ -80,4 +80,6 @@ Public group responses include only sanitized line items, display names, claims,
 | In-memory/public scores | Kinesis events → S3/Glue → batch and streaming feature jobs |
 | Local metrics page | CloudWatch metrics plus experiment dashboards |
 
+The first deployable AWS slice is defined in `infra/aws/pico-foundation.yaml`. It uses scale-to-zero services and exposes a read-only `/health` endpoint. The web app exposes `/api/aws/status`, which reports whether all required CloudFormation outputs have been configured and checks that health endpoint without returning credentials. Local storage, fake payments, and the existing model provider stay active until each production adapter is explicitly enabled.
+
 At scale, intent plans and query embeddings are cached by normalized request and region. Retrieval happens per fulfillment store so price and stock are authoritative. A learning-to-rank model replaces hand-tuned weights after impression, click, add, removal, purchase, repeat purchase, return, and substitution data is large enough for unbiased training.

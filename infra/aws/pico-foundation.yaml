@@ -1,0 +1,178 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Pico test foundation using serverless, scale-to-zero AWS services.
+
+Parameters:
+  Stage:
+    Type: String
+    Default: dev
+    AllowedPattern: "[a-z0-9-]+"
+
+Globals:
+  Function:
+    Runtime: nodejs22.x
+    Handler: index.handler
+    Architectures: [arm64]
+    MemorySize: 128
+    Timeout: 5
+    Tracing: Disabled
+    Environment:
+      Variables:
+        PICO_STAGE: !Ref Stage
+        PICO_TABLE_NAME: !Ref PicoTable
+        PICO_EVENT_BUS_NAME: !Ref PicoEventBus
+        PICO_QUEUE_URL: !Ref PicoQueue
+        PICO_USER_POOL_ID: !Ref PicoUserPool
+
+Resources:
+  PicoTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      TableName: !Sub pico-${Stage}
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+      TimeToLiveSpecification:
+        AttributeName: expiresAtEpoch
+        Enabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: false
+      SSESpecification:
+        SSEEnabled: true
+      Tags:
+        - Key: Project
+          Value: Pico
+        - Key: Environment
+          Value: !Ref Stage
+
+  PicoUserPool:
+    Type: AWS::Cognito::UserPool
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      UserPoolName: !Sub pico-${Stage}
+      UsernameAttributes: [email]
+      AutoVerifiedAttributes: [email]
+      MfaConfiguration: "OFF"
+      AccountRecoverySetting:
+        RecoveryMechanisms:
+          - Name: verified_email
+            Priority: 1
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+          RequireUppercase: true
+      UserPoolTags:
+        Project: Pico
+        Environment: !Ref Stage
+
+  PicoUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub pico-web-${Stage}
+      UserPoolId: !Ref PicoUserPool
+      GenerateSecret: false
+      PreventUserExistenceErrors: ENABLED
+      EnableTokenRevocation: true
+      AccessTokenValidity: 1
+      IdTokenValidity: 1
+      RefreshTokenValidity: 7
+      TokenValidityUnits:
+        AccessToken: hours
+        IdToken: hours
+        RefreshToken: days
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+
+  PicoQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub pico-events-${Stage}
+      MessageRetentionPeriod: 345600
+      SqsManagedSseEnabled: true
+      Tags:
+        - Key: Project
+          Value: Pico
+        - Key: Environment
+          Value: !Ref Stage
+
+  PicoEventBus:
+    Type: AWS::Events::EventBus
+    Properties:
+      Name: !Sub pico-${Stage}
+      Tags:
+        - Key: Project
+          Value: Pico
+        - Key: Environment
+          Value: !Ref Stage
+
+  PicoHealthFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub pico-health-${Stage}
+      Description: Read-only Pico AWS connectivity check.
+      InlineCode: |
+        exports.handler = async () => ({
+          statusCode: 200,
+          headers: {
+            "content-type": "application/json",
+            "cache-control": "no-store",
+            "access-control-allow-origin": "*"
+          },
+          body: JSON.stringify({
+            ok: true,
+            service: "pico-aws-foundation",
+            stage: process.env.PICO_STAGE,
+            capabilities: {
+              authentication: "cognito",
+              persistence: "dynamodb",
+              events: "eventbridge",
+              asynchronousWork: "sqs"
+            }
+          })
+        });
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PicoTable
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt PicoQueue.QueueName
+        - EventBridgePutEventsPolicy:
+            EventBusName: !Ref PicoEventBus
+      Events:
+        Health:
+          Type: HttpApi
+          Properties:
+            Path: /health
+            Method: GET
+
+Outputs:
+  ApiUrl:
+    Description: Pico test API base URL.
+    Value: !Sub https://${ServerlessHttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}
+  HealthUrl:
+    Description: Read-only connectivity endpoint.
+    Value: !Sub https://${ServerlessHttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/health
+  TableName:
+    Value: !Ref PicoTable
+  UserPoolId:
+    Value: !Ref PicoUserPool
+  UserPoolClientId:
+    Value: !Ref PicoUserPoolClient
+  EventBusName:
+    Value: !Ref PicoEventBus
+  QueueUrl:
+    Value: !Ref PicoQueue
