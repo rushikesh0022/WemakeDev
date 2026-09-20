@@ -50,6 +50,10 @@ export async function POST(request:Request){
     return NextResponse.json({kind:"suggestion",suggestion,route:`dynamic_${provider}`});
   }catch(error){
     const message=error instanceof Error?error.message:"Recommendation failed";
-    return NextResponse.json({error:message,hint:"Enable Amazon Bedrock for AWS inference, or run Ollama locally for zero-cost development."},{status:503});
+    const verificationPending=message.toLowerCase().includes("currently being verified");
+    const hint=verificationPending
+      ? "Amazon Bedrock is connected. AWS account verification is still pending; retry after AWS completes it (normally within two hours)."
+      : "Amazon Bedrock could not complete this request. Check the Amplify compute role and Bedrock model access.";
+    return NextResponse.json({error:message,hint,code:verificationPending?"AWS_ACCOUNT_VERIFICATION_PENDING":"BEDROCK_UNAVAILABLE"},{status:503});
   }
 }
