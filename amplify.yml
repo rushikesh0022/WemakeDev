@@ -10,7 +10,7 @@ applications:
             - pnpm install --frozen-lockfile
         build:
           commands:
-            - env | grep -E '^(AUTH_PROVIDER|AUTH_SECRET|DATA_BACKEND|LLM_PROVIDER|BEDROCK_MODEL_ID|PAYMENT_PROVIDER|PICO_AWS_API_URL|PICO_DYNAMODB_TABLE|NEXT_PUBLIC_COGNITO_|AWS_REGION|AMAZON_PAY_)=' >> .env.production
+            - env | grep -E '^(AUTH_PROVIDER|AUTH_SECRET|ALLOW_DEMO_LOGIN|DATA_BACKEND|LLM_PROVIDER|BEDROCK_MODEL_ID|PAYMENT_PROVIDER|PICO_AWS_API_URL|PICO_DYNAMODB_TABLE|NEXT_PUBLIC_COGNITO_|AWS_REGION|AMAZON_PAY_)=' >> .env.production
             - pnpm --filter @nesto/web build
       artifacts:
         baseDirectory: .next

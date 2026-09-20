@@ -16,37 +16,43 @@ export function AuthExperience() {
     event.preventDefault();
     setBusy(true);
     setError("");
-    const form = new FormData(event.currentTarget);
-    const endpoint = mode === "confirm" ? "confirm" : mode === "login" ? "login" : "register";
-    const payload = Object.fromEntries(form.entries());
-    if (mode === "confirm") payload.email = pendingEmail;
-    const response = await fetch(`/api/auth/${endpoint}`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-    const data = await response.json();
-    setBusy(false);
-    if (!response.ok) return setError(data.error ?? "Authentication failed.");
-    if (mode === "register" && data.confirmationRequired) {
-      setPendingEmail(String(form.get("email") ?? ""));
-      setMode("confirm");
-      return;
+    try {
+      const form = new FormData(event.currentTarget);
+      const endpoint = mode === "confirm" ? "confirm" : mode === "login" ? "login" : "register";
+      const payload = Object.fromEntries(form.entries());
+      if (mode === "confirm") payload.email = pendingEmail;
+      const response = await fetch(`/api/auth/${endpoint}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(15_000)
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error ?? "Authentication failed.");
+      if (mode === "register" && data.confirmationRequired) {
+        setPendingEmail(String(form.get("email") ?? ""));
+        setMode("confirm");
+        return;
+      }
+      if (mode === "confirm") {
+        setMode("login");
+        setError("Account verified. Sign in to continue.");
+        return;
+      }
+      const next = searchParams.get("next");
+      router.replace(next?.startsWith("/") ? next : "/account");
+      router.refresh();
+    } catch (caught) {
+      setError(caught instanceof DOMException && caught.name === "TimeoutError" ? "Sign-in timed out. Please try again." : caught instanceof Error ? caught.message : "Authentication failed.");
+    } finally {
+      setBusy(false);
     }
-    if (mode === "confirm") {
-      setMode("login");
-      setError("Account verified. Sign in to continue.");
-      return;
-    }
-    const next = searchParams.get("next");
-    router.replace(next?.startsWith("/") ? next : "/account");
-    router.refresh();
   }
 
   return (
     <div className="auth-page">
       <section className="auth-intro">
-        <span>YOUR NESTO ACCOUNT</span>
+        <span>YOUR ZAPLY ACCOUNT</span>
         <h1>Everything you need,<br />remembered for you.</h1>
         <p>Save delivery addresses, review orders, keep your preferences, and receive recommendations tied to your account.</p>
         <div><ShieldCheck /><p><strong>Private by design</strong><small>Your session is stored in a secure HTTP-only cookie.</small></p></div>

@@ -52,6 +52,10 @@ function useCognito() {
   return process.env.AUTH_PROVIDER === "cognito";
 }
 
+function allowHostedDemo() {
+  return process.env.ALLOW_DEMO_LOGIN === "true";
+}
+
 function cognitoClientId() {
   const value = process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID?.trim();
   if (!value) throw new Error("NEXT_PUBLIC_COGNITO_CLIENT_ID is required when AUTH_PROVIDER=cognito.");
@@ -115,7 +119,7 @@ function normalizeOrder(order: AccountOrder | Record<string, unknown>): AccountO
 
 async function readUsers(): Promise<StoredUser[]> {
   const users = await readState<StoredUser[]>("users", () => []);
-  if (process.env.NODE_ENV === "production") return users;
+  if (process.env.NODE_ENV === "production" && !allowHostedDemo()) return users;
   const demo = developmentDemoUser();
   return users.some((user) => user.email === demo.email) ? users : [...users, demo];
 }
@@ -179,7 +183,8 @@ export async function authenticateUser(emailInput: string, password: string) {
   const email = emailInput.trim().toLowerCase();
   const user = (await readUsers()).find((candidate) => candidate.email === email);
   if (!user) return null;
-  if (useCognito()) {
+  const isHostedDemo = allowHostedDemo() && user.id === "usr_nesto_demo";
+  if (useCognito() && !isHostedDemo) {
     try {
       await cognito.send(new InitiateAuthCommand({
         ClientId: cognitoClientId(),
