@@ -121,11 +121,18 @@ async function readUsers(): Promise<StoredUser[]> {
   const users = await readState<StoredUser[]>("users", () => []);
   if (process.env.NODE_ENV === "production" && !allowHostedDemo()) return users;
   const demo = developmentDemoUser();
-  // The hosted data store can contain an older demo record created by a
-  // previous build. Always use the canonical demo record when demo access is
-  // enabled so stale IDs or password hashes cannot shadow the test account.
-  const withoutStaleDemo = users.filter((user) => user.email.toLowerCase() !== demo.email);
-  return [...withoutStaleDemo, demo];
+  // Refresh only the demo credentials. Keep profile data, addresses and orders
+  // that were written to the hosted store during the current demo session.
+  const existingIndex = users.findIndex((user) => user.email.toLowerCase() === demo.email);
+  if (existingIndex < 0) return [...users, demo];
+  return users.map((user, index) => index === existingIndex ? {
+    ...user,
+    id: demo.id,
+    email: demo.email,
+    passwordSalt: demo.passwordSalt,
+    passwordHash: demo.passwordHash,
+    role: demo.role
+  } : user);
 }
 
 async function writeUsers(users: StoredUser[]) {
