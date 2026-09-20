@@ -10,9 +10,9 @@ import { CartProvider } from "@/lib/cart-context";
 import { PwaBootstrap } from "@/components/PwaBootstrap";
 
 export const metadata: Metadata = {
-  title: "Nesto — everything you need, in minutes",
+  title: "Zaply — everything you need, in minutes",
   description: "Fast local shopping, intelligent baskets and shared checkout",
-  applicationName: "Nesto"
+  applicationName: "Zaply"
 };
 
 export const viewport: Viewport = {

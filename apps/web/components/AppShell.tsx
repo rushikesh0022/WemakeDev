@@ -30,7 +30,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <NestoIntro />
       <header className="topbar">
         <div className="topbar__inner">
-          <Link href="/" className="brand-mark" aria-label="Nesto home"><span className="brand-mark__bolt"><Leaf fill="currentColor" /></span><span>nesto</span></Link>
+          <Link href="/" className="brand-mark" aria-label="Zaply home"><span className="brand-mark__bolt"><Leaf fill="currentColor" /></span><span>zaply</span></Link>
           <LocationPicker />
           <form className="global-search" onSubmit={submit} role="search" onFocus={() => setSearchOpen(true)}>
             <Search size={19} />

@@ -1,4 +1,4 @@
-# Nesto architecture
+# Zaply architecture
 
 ## Request flow
 
@@ -45,7 +45,7 @@ The query-understanding response has no intent, mission, occasion, recipe, or im
 ```mermaid
 sequenceDiagram
   participant O as Order owner
-  participant P as Nesto
+  participant P as Zaply
   participant F as Friend
   participant A as Amazon Pay
   O->>P: Create group basket from cart

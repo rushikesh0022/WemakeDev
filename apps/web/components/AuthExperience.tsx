@@ -57,7 +57,7 @@ export function AuthExperience() {
           <button className={mode === "login" ? "active" : ""} onClick={() => { setMode("login"); setError(""); }}>Sign in</button>
           <button className={mode === "register" ? "active" : ""} onClick={() => { setMode("register"); setError(""); }}>Create account</button>
         </div>
-        <header><div><UserRound /></div><h2>{mode === "login" ? "Welcome back" : mode === "register" ? "Join Nesto" : "Check your email"}</h2><p>{mode === "login" ? "Sign in to continue shopping." : mode === "register" ? "Create your customer account in a few seconds." : `Enter the verification code sent to ${pendingEmail}.`}</p></header>
+        <header><div><UserRound /></div><h2>{mode === "login" ? "Welcome back" : mode === "register" ? "Join Zaply" : "Check your email"}</h2><p>{mode === "login" ? "Sign in to continue shopping." : mode === "register" ? "Create your customer account in a few seconds." : `Enter the verification code sent to ${pendingEmail}.`}</p></header>
         <form onSubmit={submit}>
           {mode === "register" && <label>Full name<input name="name" autoComplete="name" minLength={2} required placeholder="Your name" /></label>}
           {mode !== "confirm" && <label>Email address<div className="input-with-icon"><Mail /><input type="email" name="email" autoComplete="email" required placeholder="you@example.com" /></div></label>}

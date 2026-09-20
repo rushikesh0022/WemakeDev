@@ -16,7 +16,7 @@ export function HomeClient() {
     <div className="home-page nowly-home nesto-home">
       <section className="commerce-hero">
         <div className="hero-motion" aria-hidden="true"><i className="hero-motion__orbit hero-motion__orbit--one" /><i className="hero-motion__orbit hero-motion__orbit--two" /><i className="hero-motion__dash" /></div>
-        <img className="zaply-hero-art" src="/nesto/motion/hero-delivery-v2.webp" alt="A Nesto grocery tote and electric delivery scooter" />
+        <img className="zaply-hero-art" src="/nesto/motion/hero-delivery-v2.webp" alt="A Zaply grocery tote and electric delivery scooter" />
         <div className="commerce-hero__shade" />
         <div className="commerce-hero__copy">
           <span><Sparkles size={14} /> Your neighbourhood store</span>
@@ -56,7 +56,7 @@ export function HomeClient() {
         <ProductGrid products={categoryLeaders(12)} source="Fresh picks" />
       </Section>
 
-      <section className="nowly-story"><div><span><Users size={15} /> SHOP TOGETHER</span><h2>Send the basket.<br />Everyone picks their part.</h2></div><p>Nesto creates one private link. Friends claim products, pay their own merchant share with Amazon Pay, and the owner places one delivery order after every payment is verified.</p><Link href="/cart">Start from your cart <ArrowRight /></Link></section>
+      <section className="nowly-story"><div><span><Users size={15} /> SHOP TOGETHER</span><h2>Send the basket.<br />Everyone picks their part.</h2></div><p>Zaply creates one private link. Friends claim products, pay their own merchant share with Amazon Pay, and the owner places one delivery order after every payment is verified.</p><Link href="/cart">Start from your cart <ArrowRight /></Link></section>
     </div>
   );
 }

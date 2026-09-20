@@ -40,7 +40,7 @@ export function GroupOwnerExperience({ initialGroup }: { initialGroup: OwnerGrou
     setGroup(data.group); setToken(data.publicToken); sessionStorage.setItem(`nesto-group-${group.id}`, data.publicToken);
     const url = `${window.location.origin}/group/${data.publicToken}`;
     const nativeShare = typeof navigator.share === "function" ? navigator.share : undefined;
-    if (nativeShare) await nativeShare.call(navigator, { title: "Join my Nesto basket", text: "Claim your products and pay your share with Amazon Pay.", url }).catch(() => undefined);
+    if (nativeShare) await nativeShare.call(navigator, { title: "Join my Zaply basket", text: "Claim your products and pay your share with Amazon Pay.", url }).catch(() => undefined);
     else await copyText(url);
     setMessage(nativeShare ? "Your invite is ready." : "Private basket link copied.");
   }

@@ -62,7 +62,7 @@ function developmentDemoUser(): StoredUser {
   const passwordSalt = "nesto-demo-account-v1";
   return {
     id: "usr_nesto_demo",
-    name: "Nesto Demo User",
+    name: "Zaply Demo User",
     email: "demo@nesto.app",
     phone: "",
     passwordSalt,

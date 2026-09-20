@@ -72,7 +72,7 @@ export class AmazonPayProvider implements PaymentProvider {
       customData: transaction.id,
       intent: "Capture",
       merchantId,
-      noteToCustomer: "Nesto order payment",
+      noteToCustomer: "Zaply order payment",
       paymentMetaData: "",
       referenceId: chargeId,
       selectedPaymentInstrumentType: "AmazonPayBalance",

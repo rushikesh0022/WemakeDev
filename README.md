@@ -1,8 +1,8 @@
-# Nesto
+# Zaply
 
 A mobile-first quick-commerce application with hybrid search, optional basket planning, live catalog data, provider-ready checkout, and shared Amazon Pay group baskets.
 
-Nesto supports both individual checkout and a pre-checkout group flow where friends choose products and contribute before one delivery order is placed.
+Zaply supports both individual checkout and a pre-checkout group flow where friends choose products and contribute before one delivery order is placed.
 
 ## Run the web app
 
@@ -29,7 +29,7 @@ Customer accounts use salted `scrypt` password hashes and signed HTTP-only sessi
 
 The local checkout uses `PAYMENT_PROVIDER=fake`. In development, its selector can reproduce approved, pending, declined, and timed-out payment states. An order becomes paid only after the server-side provider adapter approves it.
 
-From the cart, the owner can choose **Share basket with friends**. Nesto creates a seven-day private basket. Friends open the link without an account, claim whole product quantities, link Amazon Pay, and authorize a merchant charge for their portion. Once all friend contributions are approved, the owner links Amazon Pay, pays the remaining portion, and places one delivery order.
+From the cart, the owner can choose **Share basket with friends**. Zaply creates a seven-day private basket. Friends open the link without an account, claim whole product quantities, link Amazon Pay, and authorize a merchant charge for their portion. Once all friend contributions are approved, the owner links Amazon Pay, pays the remaining portion, and places one delivery order.
 
 The owner can then open the mobile-first tracking screen, which shows the confirmed, packing, on-the-way, and delivered stages, ETA, delivery address, and purchased line items. Development builds include a local fulfilment simulator for testing each stage; production expects these transitions from the order and delivery services.
 
