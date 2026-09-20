@@ -48,7 +48,7 @@ export function AccountExperience({ initialUser, initialView = "home" }: { initi
         <section className="account-profile-card">
           <div className="account-avatar">{initials}</div>
           <div className="account-profile-copy">
-            <span>MY NESTO ACCOUNT</span>
+            <span>MY ZAPLY ACCOUNT</span>
             <h1>{user.name}</h1>
             <p>{user.phone || user.email}</p>
             {user.phone && <small>{user.email}</small>}

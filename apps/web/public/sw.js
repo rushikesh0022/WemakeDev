@@ -1,4 +1,4 @@
-const CACHE = "nesto-shell-v1";
+const CACHE = "zaply-shell-v2";
 const SHELL = ["/", "/manifest.webmanifest", "/nesto/icon.svg"];
 
 self.addEventListener("install", (event) => {
@@ -14,7 +14,21 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET" || new URL(event.request.url).origin !== self.location.origin) return;
   event.respondWith(fetch(event.request).then((response) => {
-    if (response.ok && event.request.destination === "document") caches.open(CACHE).then((cache) => cache.put(event.request, response.clone()));
+    const url = new URL(event.request.url);
+    if (response.ok && event.request.destination === "document" && url.pathname === "/") {
+      caches.open(CACHE).then((cache) => cache.put("/", response.clone()));
+    }
     return response;
-  }).catch(() => caches.match(event.request).then((cached) => cached || caches.match("/"))));
+  }).catch(async () => {
+    const cached = await caches.match(event.request);
+    if (cached) return cached;
+    if (new URL(event.request.url).pathname === "/") {
+      const home = await caches.match("/");
+      if (home) return home;
+    }
+    return new Response("Zaply is temporarily offline. Please reconnect and try again.", {
+      status: 503,
+      headers: { "content-type": "text/plain; charset=utf-8" }
+    });
+  }));
 });
